@@ -14,33 +14,35 @@
 ///////////////////////////////////////////////////////////////////////////////
 // The anatomy of command line arguments (examples):
 //
-// program.exe --foo FOO -b BAR -z
-//               ^   ^    ^ ^    ^ 
-//               |   |    | |    'z' is a switch and does not require a value 
-//               |   |    | |    to follow. If `-z` is provided then `z` is
-//               |   |    | |    true, otherwise it is false.
-//               |   |    | |
-//               |   |    | 'BAR' is the string value for a variable with a
-//               |   |    | short name 'b'
-//               |   |    |
-//               |   |    'b' is a short name alternative for a variable. 
-//               |   |
-//               |   'FOO' is the string value for a variable with the name
-//               |   'foo'
-//               |
-//               'foo' is the name of a variable.
+// > program.exe --foo FOO -b BAR -z
+//      argv[0] "program.exe"
+//      argv[1] "--foo" this begins variable parsing. Any short name would be
+//              valid here as well such as "-f"
+//      argv[2] "FOO" this is the value for the foo variable. In this example
+//              we're assuming foo has the type of string.
+//      argv[3] "-b" this begins variable parsing. Any standard name would be
+//              valid here as well such as "--bar"
+//      argv[4] "BAR" this is the value for the variable with a short name 'b'.
+//              In this example we're assuming that variable has the type
+//              string.
+//      argv[5] "-z" is a switch. A switch is a boolean argument that is false
+//              if it is not present, otherwise the value is true. The user
+//              does not provide a separate value such as ['-z', 'true'].
 //
-// program.exe --foo
-//               ^
-//               Assuming foo has the type 'string' like the last example: then
-//               this example would produce an error because foo has no value. 
-//               The help text would be printed and the program would exit with
-//               an error code.
+// > program.exe --foo
+//      argv[0] "program.exe"
+//      argv[1] "--foo" if we assume foo has a string type like the last
+//              example then this would be an error. All arguments defined
+//              should be followed by a value unless it's a switch.
 // 
-// program.exe --foo FOO --foo FOO
-//                         ^
-//                         Foo has already been set so this would also 
-//                         produce an error.
+// > program.exe --foo FOO --foo FOO
+//      argv[0] "program.exe"
+//      argv[1] "--foo" begins variable parsing for foo.
+//      argv[2] "FOO" the value for foo
+//      argv[3] "--foo" this would produce an error. Only arrays may have
+//              values defined multiple times. Because foo is a string in our
+//              examples here this would be a re-definition error.
+//      argv[4] "FOO" irrelevant because of the error at argv[3].
 ///////////////////////////////////////////////////////////////////////////////
 // Quick start guide:
 //
@@ -67,28 +69,35 @@
 // true you are free to start using your arguments and destroy the context 
 // whenever you're done. Once the context is destroyed all of the args you
 // defined earlier will be destroyed as well.
-//      if (true == xo_args_has_value(foo))
+//      char* foo_value;
+//      if (xo_args_try_get_string(foo, &foo_value))
 //      {
-//          printf("foo: %i\n", xo_args_get_bool(foo));
+//          printf("foo value: %s\n", foo_value);
 //      }
 //      // ... the rest of the program
 //      xo_args_destroy_ctx(ctx); // foo and ctx are now both freed
 ///////////////////////////////////////////////////////////////////////////////
 // Implementation notes:
+//
+// xo-args expects the lifetime of argv to be longer than the usage of the
+// context. Other strings such as the program name, version, documentation, 
+// argument names and short names are not expected to have any particular
+// lifetime and are copied. All memory allocated by xo-args is tracked by the
+// context and freed when the user calls xo_args_destroy_ctx.
 // 
 // An argument name is not optional but short names are optional. There is no
 // enforcement of how long or short a name or short name can or should be.
 // Switches are an exception to this rule: a name is not required so long as a
 // short name is provided.
 //
-// There is no chaining of switches. For example -abc is not equivolent to
+// There is no chaining of switches. For example -abc is not equivalent to
 // -a -b -c.
 // 
 // Arrays can be defined two ways: by setting a variable multiple times or by
 // values continuously until a valid argument is encountered. For example:
 // [-foo 1 -foo 2 -foo 3 --bar BAR] will have an array named foo contain the
 // values 1, 2 and 3 as well as a variable bar with a value of BAR. 
-// [-foo 1 2 3 --bar BAR] is equivolent. If there was no variable named bar
+// [-foo 1 2 3 --bar BAR] is equivalent. If there was no variable named bar
 // declared then foo would have the values: 1, 2, 3, --bar, BAR.
 // 
 ///////////////////////////////////////////////////////////////////////////////
