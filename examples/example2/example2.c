@@ -1,8 +1,10 @@
+#include <assert.h>
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define XO_ARGS_IMPL
-#include "xo-args.h"
+#include "../../xo-args.h"
 
 typedef struct allocation
 {
@@ -139,7 +141,7 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
         return -1;
     }
 
-    char* foo_value;
+    char const * foo_value;
     if (xo_args_try_get_string(foo, &foo_value))
     {
         printf("foo value: %s\n", foo_value);

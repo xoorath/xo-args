@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // xo-args.h
 //
 // xo-args.h is a single header file library for C and C++ designed to help
@@ -11,7 +11,7 @@
 // Project homepage:    https://git.merveilles.town/xo/xo-args
 // License File:        See License.md
 // License URL:         https://creativecommons.org/publicdomain/zero/1.0/
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // The anatomy of command line arguments (examples):
 //
 // > program.exe --foo FOO -b BAR -z
@@ -43,7 +43,7 @@
 //              values defined multiple times. Because foo is a string in our
 //              examples here this would be a re-definition error.
 //      argv[4] "FOO" irrelevant because of the error at argv[3].
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Quick start guide:
 //
 // 1. In a single translation unit (C or C++ file) define XO_ARGS_IMPL and
@@ -76,7 +76,7 @@
 //      }
 //      // ... the rest of the program
 //      xo_args_destroy_ctx(ctx); // foo and ctx are now both freed
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Implementation notes:
 //
 // xo-args expects the lifetime of argv to be longer than the usage of the
@@ -100,7 +100,7 @@
 // [-foo 1 2 3 --bar BAR] is equivalent. If there was no variable named bar
 // declared then foo would have the values: 1, 2, 3, --bar, BAR.
 // 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if !defined(__XO_ARGS_H__)
 #define __XO_ARGS_H__
 
@@ -115,7 +115,7 @@ extern "C"
 {
 #endif // defined(__cplusplus)
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Types
 
 // entry point argc
@@ -152,7 +152,7 @@ typedef enum XO_ARGS_ARG_FLAG
     XO_ARGS_ARG_REQUIRED = 1<<7
 } XO_ARGS_ARG_FLAG;
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 xo_args_ctx* xo_args_create_ctx_advanced(xo_argc_t const argc,
                                          xo_argv_t const argv,
                                          char const * const app_name,
@@ -163,60 +163,56 @@ xo_args_ctx* xo_args_create_ctx_advanced(xo_argc_t const argc,
                                          xo_args_free_fn const free_fn,
                                          xo_args_print_fn const print_fn);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 xo_args_ctx* xo_args_create_ctx(xo_argc_t const argc,
                                 xo_argv_t const argv);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // xo_args_submit concludes the setup of xo-args and parses all arguments. 
 // If xo_args_submit returns true: the arguments are valid and can be used.
 // If xo_args_submit returns false: the arguments are invalid, the help text
 // will have been printed, and the program may now exit with an error code.
 bool xo_args_submit(xo_args_ctx * const context);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void xo_args_destroy_ctx(xo_args_ctx * const context);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                   char const * const name,
                                   char const * const short_name,
                                   XO_ARGS_ARG_FLAG const flags);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_string(xo_args_arg const * const arg, 
                             char const ** out_string);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int);
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool);
 
 #if defined(__cplusplus)
 } // extern "C"
 #endif // defined(__cplusplus)
 #endif // __XO_ARGS_H__
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // XO_ARGS_IMPL should be defined by hand in one C file before including xo-args.h
 #if defined(XO_ARGS_IMPL)
 
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define XO_ARGS_XSTR(a) XO_ARGS_STR(a)
 #define XO_ARGS_STR(a) #a
 
-// __FUNCTION__ should be fairly reliabe but it's not perfectly portable
-// This define is just a fallback in those cases.
-#if !defined(__FUNCTION__)
-    #define __FUNCTION__  __FILE__ "(" XO_ARGS_XSTR(__LINE__) ")"
-#endif
-
 #if !defined(XO_ARGS_ASSERT)
 #include <assert.h>
-#define XO_ARGS_ASSERT(condition, message) assert(((condition)) && ("xo-args assert " __FUNCTION__ ": " message))
+#define XO_ARGS_ASSERT(condition, message) assert(((condition)) && ("xo-args assert: " message))
 #endif
 
 #if defined(_WIN32)
@@ -229,8 +225,8 @@ char const g_xo_args_path_separators[2] = "/";
 #define min(x, y) ((x <= y ? x : y))
 #endif
 
-///////////////////////////////////////////////////////////////////////////////
-typedef struct xo_args_arg
+////////////////////////////////////////////////////////////////////////////////
+struct xo_args_arg
 {
 
     char const * name;
@@ -241,9 +237,9 @@ typedef struct xo_args_arg
 
     // has_value is unset until parsed
     bool has_value;
-} xo_args_arg;
+};
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 typedef struct _xo_args_arg_single
 {
     xo_args_arg base;
@@ -255,7 +251,7 @@ typedef struct _xo_args_arg_single
     } value;
 } _xo_args_arg_single;
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 typedef struct _xo_args_arg_array
 {
     xo_args_arg base;
@@ -265,8 +261,8 @@ typedef struct _xo_args_arg_array
 } _xo_args_arg_array;
 
 
-///////////////////////////////////////////////////////////////////////////////
-typedef struct xo_args_ctx
+////////////////////////////////////////////////////////////////////////////////
+struct xo_args_ctx
 {
     xo_argc_t argc;
     xo_argv_t argv;
@@ -288,9 +284,9 @@ typedef struct xo_args_ctx
     xo_args_arg** args;
     size_t args_reserved;
     size_t args_size;
-} xo_args_ctx;
+};
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void* _xo_args_tracked_alloc(xo_args_ctx * const context, size_t const size)
 {
     if (context->allocations_reserved == context->allocations_size)
@@ -305,7 +301,7 @@ void* _xo_args_tracked_alloc(xo_args_ctx * const context, size_t const size)
     return mem;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void* _xo_args_tracked_realloc(xo_args_ctx * const context, void * const mem, size_t const size)
 {
     for (size_t i = 0; i < context->allocations_size; ++i)
@@ -319,7 +315,7 @@ void* _xo_args_tracked_realloc(xo_args_ctx * const context, void * const mem, si
     return NULL;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void _xo_args_tracked_free(xo_args_ctx * const context, void * const mem)
 {
     // We will free the memory and stop tracking it, but we do this with a last-swap
@@ -342,7 +338,7 @@ void _xo_args_tracked_free(xo_args_ctx * const context, void * const mem)
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void _xo_args_arg_array_init(xo_args_ctx * const context, 
                             _xo_args_arg_array * const array,
                             size_t const value_size)
@@ -354,7 +350,7 @@ void _xo_args_arg_array_init(xo_args_ctx * const context,
                                           * array->array_reserved);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void _xo_args_arg_array_push(xo_args_ctx * const context, 
                             _xo_args_arg_array * const array,
                             void * const value,
@@ -378,7 +374,7 @@ void _xo_args_arg_array_push(xo_args_ctx * const context,
            value_size);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // The basename of a path is the filename with no path or extension(s)
 // Examples: 
 //      /a/b/c.e -> c
@@ -464,14 +460,14 @@ char const* _xo_args_basename(xo_args_ctx * const context, char const * const pa
     return NULL;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void _xo_print_try_help(xo_args_ctx const * const context)
 {
     XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here.");
     context->print("Try: %s --help\n", context->app_name);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void _xo_print_help(xo_args_ctx const * const context)
 {
     XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here.");
@@ -556,7 +552,7 @@ void _xo_print_help(xo_args_ctx const * const context)
 
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 xo_args_ctx* xo_args_create_ctx_advanced(xo_argc_t const argc,
                                          xo_argv_t const argv,
                                          char const * const app_name,
@@ -570,16 +566,20 @@ xo_args_ctx* xo_args_create_ctx_advanced(xo_argc_t const argc,
     if (argc < 1)
     {
         XO_ARGS_ASSERT(argc >= 1, "argc is expected to be >= 1");
-        (print_fn != NULL ? print_fn : printf)("xo-args error: " __FUNCTION__ 
-                                               " argc is expected to be >= 1 but was %i\n", argc);
+        (print_fn != NULL ? print_fn : printf)("xo-args error: %s argc is"
+                                               " expected to be >= 1 but was"
+                                               "%i\n", 
+                                               __func__,
+                                               argc);
         return NULL;
     }
     
     if (NULL == argv)
     {
         XO_ARGS_ASSERT(NULL != argv, "argv is required");
-        (print_fn != NULL ? print_fn : printf)("xo-args error: " __FUNCTION__ 
-                                               " argv is required\n");
+        (print_fn != NULL ? print_fn : printf)("xo-args error: %s argv is"
+                                               " required\n",
+                                               __func__);
         return NULL;
     }
 
@@ -589,15 +589,18 @@ xo_args_ctx* xo_args_create_ctx_advanced(xo_argc_t const argc,
         {
             if (NULL == argv[i])
             {
-                (print_fn != NULL ? print_fn : printf)("xo-args error: " __FUNCTION__ 
-                                                       " argv[%i] was NULL\n", i);
+                (print_fn != NULL ? print_fn : printf)("xo-args error: %s"
+                                                       " argv[%i] was NULL\n",
+                                                       __func__,
+                                                       i);
                 any_arg_is_null = true;
             }
         }
 
         if (any_arg_is_null)
         {
-            XO_ARGS_ASSERT(false == any_arg_is_null, "one or more arguments in argv was null");
+            XO_ARGS_ASSERT(false == any_arg_is_null, 
+                           "one or more arguments in argv was null");
             return NULL;
         }
     }
@@ -669,7 +672,7 @@ xo_args_ctx* xo_args_create_ctx_advanced(xo_argc_t const argc,
     return context;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 xo_args_ctx* xo_args_create_ctx(xo_argc_t const argc,
                                 xo_argv_t const argv)
 {
@@ -684,7 +687,7 @@ xo_args_ctx* xo_args_create_ctx(xo_argc_t const argc,
                                        /*print_fn*/NULL);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // A helper to try and parse out a single argument.
 //
 // argv_index should be the index into argv where the variable name was found
@@ -848,7 +851,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_submit(xo_args_ctx * const context)
 {
     XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here");
@@ -935,7 +938,7 @@ bool xo_args_submit(xo_args_ctx * const context)
     return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void xo_args_destroy_ctx(xo_args_ctx* context)
 {
     XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here");
@@ -951,29 +954,34 @@ void xo_args_destroy_ctx(xo_args_ctx* context)
     context->free(context);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                   char const * const name,
                                   char const * const short_name,
                                   XO_ARGS_ARG_FLAG const flags)
 {
-    XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here");
+    XO_ARGS_ASSERT(NULL != context, 
+                   "xo_args_ctx must not be null here");
     XO_ARGS_ASSERT(NULL != name, "name must not be null here");
 
     size_t const name_len = strlen(name);
-    XO_ARGS_ASSERT(name_len != 0, "name must be a valid string with a length >= 1");
+    XO_ARGS_ASSERT(name_len != 0, 
+                   "name must be a valid string with a length >= 1");
 
     size_t const short_name_len = NULL != short_name ? strlen(short_name) : 0;
-    XO_ARGS_ASSERT(short_name == NULL || short_name_len != 0, "if a short name is provided it must have a length >= 1");
+    XO_ARGS_ASSERT(short_name == NULL || short_name_len != 0, 
+                   "if a short name is provided it must have a length >= 1");
 
     for (size_t i = 0; i < name_len; ++i)
     {
-        XO_ARGS_ASSERT(isalnum(name[i]), "argument names must be alphanumeric");
+        XO_ARGS_ASSERT(isalnum(name[i]), 
+                       "argument names must be alphanumeric");
     }
 
     for (size_t i = 0; i < short_name_len; ++i)
     {
-        XO_ARGS_ASSERT(isalnum(short_name[i]), "argument short names must be alphanumeric");
+        XO_ARGS_ASSERT(isalnum(short_name[i]), 
+                       "argument short names must be alphanumeric");
     }
 
 
@@ -996,7 +1004,8 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
             type_flag_temp &= type_flag_temp-1;
         }
         
-        XO_ARGS_ASSERT(bits <= 1, "arguments must only have one or zero types set");
+        XO_ARGS_ASSERT(bits <= 1,
+                       "arguments must only have one or zero types set");
     }
 
     // Look for conflicts with existing arguments first.
@@ -1005,15 +1014,18 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
         xo_args_arg * const existing_arg = context->args[i];
         if (strcmp(existing_arg->name, name) == 0)
         {
-            context->print("xo-args error: " __FUNCTION__ 
-                           " argument name conflict. name: %s\n", name);
+            context->print("xo-args error: %s argument name conflict. name:"
+                           " %s\n", 
+                           __func__,
+                           name);
             return NULL;
         }
         if (NULL != short_name 
             && strcmp(existing_arg->short_name, short_name) == 0)
         {
-            context->print("xo-args error: " __FUNCTION__
-                           " argument short_name conflict. short_name: %s\n", 
+            context->print("xo-args error: %s argument short_name conflict."
+                           " short_name: %s\n",
+                           __func__, 
                            short_name);
             return NULL;
         }
@@ -1076,13 +1088,14 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     return arg;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_string(xo_args_arg const * const arg, 
                             char const ** out_string)
 {
     XO_ARGS_ASSERT(NULL != arg, "argument is null");
     XO_ARGS_ASSERT(NULL != out_string, "out param is null");
-    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_STRING, "incorrect argument type");
+    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_STRING, 
+                   "incorrect argument type");
     if (arg->has_value)
     {
         *out_string = ((_xo_args_arg_single*)arg)->value._string;
@@ -1091,12 +1104,13 @@ bool xo_args_try_get_string(xo_args_arg const * const arg,
     return false;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int)
 {
     XO_ARGS_ASSERT(NULL != arg, "argument is null");
     XO_ARGS_ASSERT(NULL != out_int, "out param is null");
-    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_INT, "incorrect argument type");
+    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_INT,
+                   "incorrect argument type");
     if (arg->has_value)
     {
         *out_int = ((_xo_args_arg_single*)arg)->value._int;
@@ -1105,12 +1119,13 @@ bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int)
     return false;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool)
 {
     XO_ARGS_ASSERT(NULL != arg, "argument is null");
     XO_ARGS_ASSERT(NULL != out_bool, "out param is null");
-    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_BOOL, "incorrect argument type");
+    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_BOOL,
+                   "incorrect argument type");
     if (arg->has_value)
     {
         *out_bool = ((_xo_args_arg_single*)arg)->value._bool;
