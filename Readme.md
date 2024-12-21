@@ -1,7 +1,7 @@
 xo-args is a single header file library for defining and parsing command line
 arguments.
 
-Status: Work in progress as of: 2024 December
+Status: Work in progress as of: 2024 December 
 
 License: [CC0 1.0 Universal](./License.md)
 
