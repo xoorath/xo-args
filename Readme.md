@@ -14,10 +14,8 @@ License: [CC0 1.0 Universal](./License.md)
 ```
 
 ```c
-#include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "xo-args.h"
 
