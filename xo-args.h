@@ -345,9 +345,9 @@ void _xo_args_arg_array_init(xo_args_ctx * const context,
 {
     array->array_reserved = 2;
     array->array_size = 0;
-    array->array = _xo_args_tracked_alloc(context,
-                                          value_size
-                                          * array->array_reserved);
+    array->array = (void**)_xo_args_tracked_alloc(context,
+                                                  value_size
+                                                  * array->array_reserved);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -364,10 +364,10 @@ void _xo_args_arg_array_push(xo_args_ctx * const context,
     if (array->array_reserved == array->array_size)
     {
         array->array_reserved *= 2;
-        array->array = _xo_args_tracked_realloc(context, 
-                                                array->array,
-                                                array->array_reserved 
-                                                * value_size);
+        array->array = (void**)_xo_args_tracked_realloc(context, 
+                                                        array->array,
+                                                        array->array_reserved 
+                                                        * value_size);
     }
     memcpy(((char*)array->array) + (value_size * array->array_size++),
            value,
@@ -720,7 +720,8 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
         }
         char const * const next_value = context->argv[next_index];
         size_t const next_value_len = strlen(next_value);
-        char * buff = _xo_args_tracked_alloc(context, next_value_len + 1);
+        char * const buff = (char*)_xo_args_tracked_alloc(context, 
+                                                          next_value_len + 1);
         memcpy(buff, next_value, next_value_len + 1);
         ((_xo_args_arg_single*)arg)->value._string = buff;
         arg->has_value = true;
@@ -729,8 +730,8 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_SWITCH)
     {
-        // Reminder: value._bool can be uninitialized for switches
-        // because when no value is set it is implicitly false.
+        // Reminder: value._bool can be uninitialized for switches because when
+        // no value is set it is implicitly false.
         ((_xo_args_arg_single*)arg)->value._bool = true;
         return true;
     }
@@ -830,15 +831,12 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 
         char const * next_value = context->argv[next_index];
         size_t next_value_len = strlen(next_value);
-        char * buff = _xo_args_tracked_alloc(context, next_value_len + 1);
+        char * const buff = (char *)_xo_args_tracked_alloc(context, 
+                                                           next_value_len + 1);
         memcpy(buff, next_value, next_value_len + 1);
-
-        _xo_args_arg_array_push(context, array, &buff, sizeof(char*));
-
+        _xo_args_arg_array_push(context, array, (void *)&buff, sizeof(char*));
         arg->has_value = true;
         *argv_index = next_index;
-
-        
 
         return true;
     }
@@ -855,7 +853,6 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 bool xo_args_submit(xo_args_ctx * const context)
 {
     XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here");
-    _xo_print_help(context);
 
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
@@ -985,18 +982,18 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     }
 
 
-    XO_ARGS_ARG_FLAG const all_types = 
-        XO_ARGS_TYPE_STRING
+    XO_ARGS_ARG_FLAG const all_types =
+        (XO_ARGS_ARG_FLAG)(XO_ARGS_TYPE_STRING
         | XO_ARGS_TYPE_SWITCH
         | XO_ARGS_TYPE_BOOL
         | XO_ARGS_TYPE_INT
         | XO_ARGS_TYPE_BOOL_ARRAY
         | XO_ARGS_TYPE_INT_ARRAY
-        | XO_ARGS_TYPE_STRING_ARRAY;
+        | XO_ARGS_TYPE_STRING_ARRAY);
     {
         // Extract the type from the provided flags and count the set bits
         // if there is more than one type bit set: the argument declaration is invalid.
-        XO_ARGS_ARG_FLAG const type_flag = flags & all_types;
+        XO_ARGS_ARG_FLAG const type_flag = (XO_ARGS_ARG_FLAG)(flags & all_types);
         size_t type_flag_temp = type_flag;
         size_t bits = 0;
         for(;type_flag_temp;++bits)
@@ -1067,9 +1064,11 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
 
     context->args[context->args_size++] = arg;
     
-    // If any type flag is set: use the flags as is
-    // Otherwise take the provided flags and assign the default type of string
-    arg->flags = (all_types & flags) ? flags : flags | XO_ARGS_TYPE_STRING;
+    // If any type flag is set: use the flags as is otherwise take the provided
+    // flags and assign the default type of string
+    arg->flags = (XO_ARGS_ARG_FLAG)((all_types & flags) 
+                                    ? flags 
+                                    : flags | XO_ARGS_TYPE_STRING);
 
     {
         char * const buff = (char*)_xo_args_tracked_alloc(context, name_len+1);
