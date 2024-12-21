@@ -158,15 +158,19 @@ bool test_condition(bool condition, char const * const fmt, ...)
     va_start(ap, fmt);
     vprintf(fmt, ap);
     va_end(ap);
-    
-    printf("\n");
+    putchar('\n');
     return condition;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool test1(void)
+// Returns the number of failed tests.
+// Some tests may not be run if tests are failing as it may not be safe to do so
+// or if early failures would cause misleading test results for tests further
+// in the function.
+size_t test1(void)
 {
     initialize_program_state();
+    size_t tests_failed = 0;
 
     xo_argc_t const mock_argc = 1;
     char const * mock_argv[mock_argc];
@@ -175,7 +179,7 @@ bool test1(void)
     if (false == test_condition(g_program_state.allocations_size == 0,
                                 "test setup assumption: allocator is unused at test start"))
     {
-        return false;
+        return ++tests_failed;
     }
 
     xo_args_ctx * ctx = xo_args_create_ctx_advanced(mock_argc,
@@ -191,7 +195,7 @@ bool test1(void)
     if (false == test_condition(g_program_state.allocations_size != 0,
                                 "xo-args uses custom allocator function"))
     {
-        return false;
+        return ++tests_failed;
     }
 
     xo_args_destroy_ctx(ctx);
@@ -199,7 +203,7 @@ bool test1(void)
     if (false == test_condition(g_program_state.allocations_size == 0,
                                 "xo-args does not leak the context"))
     {
-        return false;
+        return ++tests_failed;
     }
 
     ctx = xo_args_create_ctx_advanced(mock_argc,
@@ -216,8 +220,7 @@ bool test1(void)
     {
         test_condition(false, "test setup assumption: xo_args_submit would"
                               " return true if setup with no arguments.");
-        xo_args_destroy_ctx(ctx);
-        return false;
+        ++tests_failed;
     }
 
     xo_args_destroy_ctx(ctx);
@@ -225,18 +228,17 @@ bool test1(void)
     if (false == test_condition(g_program_state.allocations_size == 0,
                                 "xo-args does not leak when submitting"))
     {
-        return false;
+        ++tests_failed;
     }
 
     if (false == test_condition(g_program_state.standard_output_size == 0,
                                 "xo-args does not print when submit is"
                                 " successful"))
     {
-        printf("stdout: \n\"\"\"\n%s\n\"\"\"\n", g_program_state.standard_output);
-        return false;
+        ++tests_failed;
     }
 
-    return true;
+    return tests_failed;
 }
 
 
@@ -247,7 +249,7 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     (void)argv;
     size_t failed_tests = 0;
 
-    failed_tests += false == test1() ? 1 : 0;
+    failed_tests += test1();
     free(g_program_state.allocations);
     free(g_program_state.assertion_output);
     free(g_program_state.standard_output);
