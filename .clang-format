@@ -1,0 +1,17 @@
+# Format Style Options - Created with Clang Power Tools
+---
+BasedOnStyle: Microsoft
+BinPackArguments: false
+BinPackParameters: false
+BraceWrapping: 
+  AfterEnum: false
+  AfterUnion: true
+  AfterExternBlock: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBraces: Allman
+ColumnLimit: 80
+IndentExternBlock: NoIndent
+PointerAlignment: Middle
+SpaceAroundPointerQualifiers: Both
+Standard: C++03
+...

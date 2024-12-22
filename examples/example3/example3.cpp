@@ -6,13 +6,14 @@
 ///////////////////////////////////////////////////////////////////////////////
 class Example3Args
 {
-public:
+  public:
     Example3Args(xo_argc_t const argc, xo_argv_t const argv)
-        : _args_ctx(xo_args_create_ctx(argc, argv))
-        , _foo(xo_args_declare_arg(_args_ctx,
-            "foo",
-            "f",
-            XO_ARGS_ARG_FLAG(XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED)))
+        : _args_ctx(xo_args_create_ctx(argc, argv)),
+          _foo(xo_args_declare_arg(
+              _args_ctx,
+              "foo",
+              "f",
+              XO_ARGS_ARG_FLAG(XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED)))
     {
     }
 
@@ -25,7 +26,7 @@ public:
     {
         if (xo_args_submit(_args_ctx))
         {
-            char const* foo_val;
+            char const * foo_val;
             if (xo_args_try_get_string(_foo, &foo_val))
             {
                 _foo_value = foo_val;
@@ -35,11 +36,18 @@ public:
         return false;
     }
 
-    std::string const& GetFoo() const { return _foo_value; }
+    std::string const & GetFoo() const
+    {
+        return _foo_value;
+    }
 
-private:
-    Example3Args() {}
-    Example3Args(const Example3Args&) {}
+  private:
+    Example3Args()
+    {
+    }
+    Example3Args(const Example3Args &)
+    {
+    }
 
     xo_args_ctx * _args_ctx;
     xo_args_arg * _foo;
@@ -68,7 +76,6 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     std::cout << "foo value: " << args.GetFoo() << std::endl;
 
     return 0;
-
 }
 
 #define XO_ARGS_IMPL
