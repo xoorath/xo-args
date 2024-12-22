@@ -104,7 +104,7 @@
 #if !defined(__XO_ARGS_H__)
 #define __XO_ARGS_H__
 
-#include <inttypes.h>
+#include <stdint.h>
 #if !defined(__cplusplus)
 #include <stdbool.h>
 #endif // !defined(__cplusplus)

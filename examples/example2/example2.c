@@ -156,8 +156,8 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
         for(size_t j = 0; j < allocation->size-1; ++j)
         {
             if (!((mem_str[j] >= 'A' && mem_str[j] <= 'Z') 
-                || (mem_str[j] >= 'a' && mem_str[j] <= 'z'
-                || (mem_str[j] >= '0' && mem_str[j] <= '9')))
+                || ((mem_str[j] >= 'a' && mem_str[j] <= 'z') 
+                    || (mem_str[j] >= '0' && mem_str[j] <= '9')))
             )
             {
                 is_str = false;
