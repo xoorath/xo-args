@@ -1,13 +1,53 @@
-#include <assert.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <iostream>
+#include <string>
 
-#include "../../xo-args.h"
+#include <xo-args.h>
 
 ///////////////////////////////////////////////////////////////////////////////
-// Example1
+class Example3Args
+{
+public:
+    Example3Args(xo_argc_t const argc, xo_argv_t const argv)
+        : _args_ctx(xo_args_create_ctx(argc, argv))
+        , _foo(xo_args_declare_arg(_args_ctx,
+            "foo",
+            "f",
+            XO_ARGS_ARG_FLAG(XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED)))
+    {
+    }
+
+    ~Example3Args()
+    {
+        xo_args_destroy_ctx(_args_ctx);
+    }
+
+    bool Submit()
+    {
+        if (xo_args_submit(_args_ctx))
+        {
+            char const* foo_val;
+            if (xo_args_try_get_string(_foo, &foo_val))
+            {
+                _foo_value = foo_val;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    std::string const& GetFoo() const { return _foo_value; }
+
+private:
+    Example3Args() {}
+    Example3Args(const Example3Args&) {}
+
+    xo_args_ctx * _args_ctx;
+    xo_args_arg * _foo;
+    std::string _foo_value;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// Example3
 int main(xo_argc_t const argc, xo_argv_t const argv)
 {
     (void)argc; // unused
@@ -18,42 +58,18 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     mock_argv[1] = "--foo";
     mock_argv[2] = "this is an example.";
 
-    xo_args_ctx* args_ctx = xo_args_create_ctx(mock_argc, mock_argv);
-    // The context should only fail to be created if the arguments are invalid
-    // such as argc being 0, or argv containing null arguments.
-    if (NULL == args_ctx)
+    Example3Args args(mock_argc, mock_argv);
+
+    if (false == args.Submit())
     {
         return -1;
     }
 
-    xo_args_arg const * const foo = xo_args_declare_arg(args_ctx, 
-                                                        "foo", 
-                                                        "f", 
-                                                        XO_ARGS_ARG_FLAG(XO_ARGS_TYPE_STRING
-                                                        | XO_ARGS_ARG_REQUIRED));
+    std::cout << "foo value: " << args.GetFoo() << std::endl;
 
-    // If xo_args_submit returns false then the parameters passed to the program are invalid
-    // In that case the generated help text is printed to stdout and it makes sense to exit 
-    // with a non 0 error code in most cases  
-    if (false == xo_args_submit(args_ctx))
-    {
-        xo_args_destroy_ctx(args_ctx);
-        args_ctx = NULL;
-        return -1;
-    }
-
-    char const * foo_value;
-    if (xo_args_try_get_string(foo, &foo_value))
-    {
-        printf("foo value: %s\n", foo_value);
-    }
-    else
-    {
-        printf("foo value: unset\n");
-    }
-
-    xo_args_destroy_ctx(args_ctx);
-    args_ctx = NULL;
     return 0;
 
 }
+
+#define XO_ARGS_IMPL
+#include <xo-args.h>

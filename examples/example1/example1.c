@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../xo-args.h"
+#include <xo-args.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example1
@@ -13,7 +13,7 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     (void)argc; // unused
     (void)argv; // unused
     xo_argc_t const mock_argc = 3;
-    char const * mock_argv[mock_argc];
+    char const * mock_argv[3];
     mock_argv[0] = "/mock/example1";
     mock_argv[1] = "--foo";
     mock_argv[2] = "this is an example.";
@@ -57,3 +57,7 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     return 0;
 
 }
+
+
+#define XO_ARGS_IMPL
+#include <xo-args.h>
