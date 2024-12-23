@@ -80,6 +80,29 @@ void example_free(void * const mem)
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+bool example_is_alnum(char const c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+           || (c >= '0' && c <= '9');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool example_is_alnum_str(char const * const start, char const * const end)
+{
+    char const * const last = (NULL != end ? end : (start + strlen(start))) - 1;
+    char const * curr = start;
+    while (curr != last)
+    {
+        if (false == example_is_alnum(*curr))
+        {
+            return false;
+        }
+        ++curr;
+    }
+    return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Example2
 int main(xo_argc_t const argc, xo_argv_t const argv)
@@ -117,10 +140,10 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     xo_args_arg const * const foo = xo_args_declare_arg(
         args_ctx, "foo", "f", XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED);
 
-    xo_args_declare_arg(
+    xo_args_arg const * const bar = xo_args_declare_arg(
         args_ctx, "bar", "b", XO_ARGS_TYPE_STRING | XO_ARGS_ARG_OPTIONAL);
 
-    xo_args_declare_arg(
+    xo_args_arg const * const baz = xo_args_declare_arg(
         args_ctx, "baz", "B", XO_ARGS_TYPE_STRING | XO_ARGS_ARG_OPTIONAL);
 
     // If xo_args_submit returns false then the parameters passed to the program
@@ -146,33 +169,41 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     size_t running_total = 0;
     for (size_t i = 0; i < g_allocation_list.allocations_size; ++i)
     {
-        allocation * allocation = &g_allocation_list.allocations[i];
-        char const * const mem_str = (char *)allocation->memory;
-        bool is_str = true;
-        for (size_t j = 0; j < allocation->size - 1; ++j)
+        allocation const * const allocation = &g_allocation_list.allocations[i];
+        printf("allocation [0x%p]: %zu\t(%zu)",
+               allocation->memory,
+               allocation->size,
+               allocation->reallocations);
+        if (allocation->memory == args_ctx)
         {
-            if (!((mem_str[j] >= 'A' && mem_str[j] <= 'Z')
-                  || ((mem_str[j] >= 'a' && mem_str[j] <= 'z')
-                      || (mem_str[j] >= '0' && mem_str[j] <= '9'))))
-            {
-                is_str = false;
-                break;
-            }
+            printf("\txo_args_ctx* args_ctx\n");
         }
-        if (is_str)
+        else if (allocation->memory == foo)
         {
-            printf("allocation [0x%p]: %zu\t(%zu)\t\"%s\"\n",
-                   allocation->memory,
-                   allocation->size,
-                   allocation->reallocations,
-                   mem_str);
+            printf("\txo_args_arg* foo\n");
+        }
+        else if (allocation->memory == bar)
+        {
+            printf("\txo_args_arg* bar\n");
+        }
+        else if (allocation->memory == baz)
+        {
+            printf("\txo_args_arg* baz\n");
         }
         else
         {
-            printf("allocation [0x%p]: %zu\t(%zu)\n",
-                   allocation->memory,
-                   allocation->size,
-                   allocation->reallocations);
+            char const * const mem_str = (char *)allocation->memory;
+            bool is_str =
+                example_is_alnum_str(mem_str, mem_str + allocation->size);
+            if (is_str)
+            {
+                printf("\tchar* = \"%s\"\n", mem_str);
+                
+            }
+            else
+            {
+                printf("\n");
+            }
         }
         running_total += allocation->size;
     }

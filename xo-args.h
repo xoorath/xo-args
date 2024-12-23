@@ -466,16 +466,47 @@ char const * _xo_args_basename(xo_args_ctx * const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool _xo_isalnum(char const c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+           || (c >= '0' && c <= '9');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool _xo_isalnum_str(char const * const start, char const * const end)
+{
+    char const * const last = (NULL != end ? end : (start + strlen(start))) - 1;
+    char const * curr = start;
+    while (curr != last)
+    {
+        if (false == _xo_isalnum(*curr))
+        {
+            return false;
+        }
+        ++curr;
+    }
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void _xo_print_try_help(xo_args_ctx const * const context)
 {
-    XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here.");
+    if (NULL == context)
+    {
+        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
+        return;
+    }
     context->print("Try: %s --help\n", context->app_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void _xo_print_help(xo_args_ctx const * const context)
 {
-    XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here.");
+    if (NULL == context)
+    {
+        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
+        return;
+    }
 
     if (NULL != context->app_version)
     {
@@ -792,7 +823,8 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
         int const scanned = sscanf(next_value, "%i", &parsed_val);
         if (1 != scanned)
         {
-            context->print("Error: Value for %s is out of range\n",
+            context->print("Error: Value for %s is not a valid integer or is "
+                           "out of range\n",
                            context->argv[*argv_index]);
             return false;
         }
@@ -857,7 +889,11 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 ////////////////////////////////////////////////////////////////////////////////
 bool xo_args_submit(xo_args_ctx * const context)
 {
-    XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here");
+    if (NULL == context)
+    {
+        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
+        return false;
+    }
 
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
@@ -946,7 +982,11 @@ bool xo_args_submit(xo_args_ctx * const context)
 ////////////////////////////////////////////////////////////////////////////////
 void xo_args_destroy_ctx(xo_args_ctx * context)
 {
-    XO_ARGS_ASSERT(context, "xo_args_ctx must not be null here");
+    if (NULL == context)
+    {
+        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
+        return;
+    }
     // There is no need to use the tracked delete here.
     // It performs extra work such as swapping elements which is intended to
     // keep the list valid after freeing each element. We don't care about that.
@@ -965,8 +1005,16 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                   char const * const short_name,
                                   XO_ARGS_ARG_FLAG const flags)
 {
-    XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here");
-    XO_ARGS_ASSERT(NULL != name, "name must not be null here");
+    if (NULL == context)
+    {
+        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
+        return NULL;
+    }
+    if (NULL == name)
+    {
+        XO_ARGS_ASSERT(NULL != name, "name must not be null here");
+        return NULL;
+    }
 
     size_t const name_len = strlen(name);
     XO_ARGS_ASSERT(name_len != 0,
@@ -976,15 +1024,24 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     XO_ARGS_ASSERT(short_name == NULL || short_name_len != 0,
                    "if a short name is provided it must have a length >= 1");
 
-    for (size_t i = 0; i < name_len; ++i)
+    bool const name_is_alnum = _xo_isalnum_str(name, name + name_len);
+    if (false == name_is_alnum)
     {
-        XO_ARGS_ASSERT(isalnum(name[i]), "argument names must be alphanumeric");
+        XO_ARGS_ASSERT(true == name_is_alnum,
+                       "argument names must be alphanumeric");
+        return NULL;
     }
 
-    for (size_t i = 0; i < short_name_len; ++i)
+    if (short_name_len > 0)
     {
-        XO_ARGS_ASSERT(isalnum(short_name[i]),
-                       "argument short names must be alphanumeric");
+        bool const short_name_is_alnum =
+            _xo_isalnum_str(short_name, short_name + short_name_len);
+        if (false == short_name_is_alnum)
+        {
+            XO_ARGS_ASSERT(true == short_name_is_alnum,
+                           "argument short names must be alphanumeric");
+            return NULL;
+        }
     }
 
     XO_ARGS_ARG_FLAG const all_types =
@@ -1005,8 +1062,12 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
             type_flag_temp &= type_flag_temp - 1;
         }
 
-        XO_ARGS_ASSERT(bits <= 1,
-                       "arguments must only have one or zero types set");
+        if (bits > 1)
+        {
+            XO_ARGS_ASSERT(bits <= 1,
+                           "arguments must only have one or zero types set");
+            return NULL;
+        }
     }
 
     // Look for conflicts with existing arguments first.
@@ -1096,9 +1157,22 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
 bool xo_args_try_get_string(xo_args_arg const * const arg,
                             char const ** out_string)
 {
-    XO_ARGS_ASSERT(NULL != arg, "argument is null");
-    XO_ARGS_ASSERT(NULL != out_string, "out param is null");
-    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_STRING, "incorrect argument type");
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_string)
+    {
+        XO_ARGS_ASSERT(NULL != out_string, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_STRING != (arg->flags & XO_ARGS_TYPE_STRING))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_STRING,
+                       "incorrect argument type");
+        return false;
+    }
     if (arg->has_value)
     {
         *out_string = ((_xo_args_arg_single *)arg)->value._string;
@@ -1110,9 +1184,22 @@ bool xo_args_try_get_string(xo_args_arg const * const arg,
 ////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int)
 {
-    XO_ARGS_ASSERT(NULL != arg, "argument is null");
-    XO_ARGS_ASSERT(NULL != out_int, "out param is null");
-    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_INT, "incorrect argument type");
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_int)
+    {
+        XO_ARGS_ASSERT(NULL != out_int, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_INT != (arg->flags & XO_ARGS_TYPE_INT))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_INT,
+                       "incorrect argument type");
+        return false;
+    }
     if (arg->has_value)
     {
         *out_int = ((_xo_args_arg_single *)arg)->value._int;
@@ -1124,9 +1211,22 @@ bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int)
 ////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool)
 {
-    XO_ARGS_ASSERT(NULL != arg, "argument is null");
-    XO_ARGS_ASSERT(NULL != out_bool, "out param is null");
-    XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_BOOL, "incorrect argument type");
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_bool)
+    {
+        XO_ARGS_ASSERT(NULL != out_bool, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_BOOL != (arg->flags & XO_ARGS_TYPE_BOOL))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_BOOL,
+                       "incorrect argument type");
+        return false;
+    }
     if (arg->has_value)
     {
         *out_bool = ((_xo_args_arg_single *)arg)->value._bool;
