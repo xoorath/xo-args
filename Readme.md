@@ -1,3 +1,5 @@
+![xo-args.png](https://git.merveilles.town/xo/xo-args-internal/raw/branch/main/docs/xo-args-wordmark.png)
+
 xo-args is a single header file library for defining and parsing command line
 arguments.
 
