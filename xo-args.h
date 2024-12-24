@@ -491,23 +491,12 @@ bool _xo_isalnum_str(char const * const start, char const * const end)
 ////////////////////////////////////////////////////////////////////////////////
 void _xo_print_try_help(xo_args_ctx const * const context)
 {
-    if (NULL == context)
-    {
-        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
-        return;
-    }
     context->print("Try: %s --help\n", context->app_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void _xo_print_help(xo_args_ctx const * const context)
 {
-    if (NULL == context)
-    {
-        XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
-        return;
-    }
-
     if (NULL != context->app_version)
     {
         context->print(
@@ -928,6 +917,7 @@ bool xo_args_submit(xo_args_ctx * const context)
                             == _xo_args_try_parse_arg(
                                 context, &i, context->args[j]))
                         {
+                            _xo_print_try_help(context);
                             return false;
                         }
                         break;
@@ -946,6 +936,7 @@ bool xo_args_submit(xo_args_ctx * const context)
                             == _xo_args_try_parse_arg(
                                 context, &i, context->args[j]))
                         {
+                            _xo_print_try_help(context);
                             return false;
                         }
                         break;
