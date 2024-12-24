@@ -58,3 +58,7 @@ int main(int argc, char** argv)
 * [example1.c](./examples/example1/example1.c): Basic usage
 * [example2.c](./examples/example2/example2.c): Demonstrates memory allocations
 * [example3.c](./examples/example3/example3.c): C++ demo
+
+# Contributing
+
+See [xo-args-internal](https://git.merveilles.town/xo/xo-args).
