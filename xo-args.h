@@ -759,7 +759,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     {
         // Reminder: value._bool can be uninitialized for switches because when
         // no value is set it is implicitly false.
-        ((_xo_args_arg_single *)arg)->value._bool = true;
+        ((_xo_args_arg_single *)arg)->base.has_value = true;
         return true;
     }
     else if (arg->flags & XO_ARGS_TYPE_BOOL)
@@ -808,9 +808,20 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             return false;
         }
         char const * const next_value = context->argv[next_index];
+        size_t const next_value_length = strlen(next_value);
+        if (0 == next_value_length)
+        {
+            context->print("Error: Value for %s is not a valid integer or is "
+                           "out of range\n",
+                           context->argv[*argv_index]);
+            return false;
+        }
+
         int parsed_val = 0;
-        int const scanned = sscanf(next_value, "%i", &parsed_val);
-        if (1 != scanned)
+        int end_index = 0;
+
+        int const scanned = sscanf(next_value, "%i%n", &parsed_val, &end_index);
+        if (1 != scanned || (size_t)end_index != next_value_length)
         {
             context->print("Error: Value for %s is not a valid integer or is "
                            "out of range\n",
@@ -1125,6 +1136,14 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
         (XO_ARGS_ARG_FLAG)((all_types & flags) ? flags
                                                : flags | XO_ARGS_TYPE_STRING);
 
+    // A required switch doesn't make much sense so we will just assume the dev
+    // meant the switch should behave normally (optionally).
+    if ((XO_ARGS_TYPE_SWITCH | XO_ARGS_ARG_REQUIRED)
+        == (flags & (XO_ARGS_TYPE_SWITCH | XO_ARGS_ARG_REQUIRED)))
+    {
+        arg->flags = (XO_ARGS_ARG_FLAG)(arg->flags & ~XO_ARGS_ARG_REQUIRED);
+    }
+
     {
         char * const buff =
             (char *)_xo_args_tracked_alloc(context, name_len + 1);
@@ -1138,6 +1157,10 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
             (char *)_xo_args_tracked_alloc(context, short_name_len + 1);
         memcpy(buff, short_name, short_name_len + 1);
         arg->short_name = buff;
+    }
+    else
+    {
+        arg->short_name = NULL;
     }
 
     arg->has_value = false;
@@ -1212,17 +1235,29 @@ bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool)
         XO_ARGS_ASSERT(NULL != out_bool, "out param is null");
         return false;
     }
-    if (XO_ARGS_TYPE_BOOL != (arg->flags & XO_ARGS_TYPE_BOOL))
+    bool const type_is_bool =
+        XO_ARGS_TYPE_BOOL == (arg->flags & XO_ARGS_TYPE_BOOL);
+    bool const type_is_switch =
+        XO_ARGS_TYPE_SWITCH == (arg->flags & XO_ARGS_TYPE_SWITCH);
+    if (false == type_is_bool && false == type_is_switch)
     {
         XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_BOOL,
                        "incorrect argument type");
         return false;
     }
-    if (arg->has_value)
+
+    if (type_is_bool)
     {
-        *out_bool = ((_xo_args_arg_single *)arg)->value._bool;
-        return true;
+        if (arg->has_value)
+        {
+            *out_bool = ((_xo_args_arg_single *)arg)->value._bool;
+            return true;
+        }
+        return false;
     }
-    return false;
+    // the type is switch here
+    // switches are implicitly false until set - once set they are true
+    *out_bool = arg->has_value;
+    return true;
 }
 #endif
