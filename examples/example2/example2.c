@@ -222,7 +222,7 @@ int main(xo_argc_t const argc, xo_argv_t const argv)
     printf("%zu bytes leaked\n", running_total);
 
     args_ctx = NULL;
-    return 0;
+    return (int)running_total;
 }
 
 #define XO_ARGS_IMPL

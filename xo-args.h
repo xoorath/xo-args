@@ -817,17 +817,19 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             return false;
         }
 
-        int parsed_val = 0;
-        int end_index = 0;
+        errno = 0;
+        char * end_ptr;
+        long const long_val = strtol(next_value, &end_ptr, 0);
+        int const parsed_val = (int)long_val;
 
-        int const scanned = sscanf(next_value, "%i%n", &parsed_val, &end_index);
-        if (1 != scanned || (size_t)end_index != next_value_length)
+        if (0 != errno || '\0' != *end_ptr || long_val != (long)parsed_val)
         {
             context->print("Error: Value for %s is not a valid integer or is "
                            "out of range\n",
                            context->argv[*argv_index]);
             return false;
         }
+
         ((_xo_args_arg_single *)arg)->value._int = parsed_val;
         arg->has_value = true;
         *argv_index = next_index;
