@@ -194,6 +194,21 @@ extern "C"
     ////////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool);
 
+    ////////////////////////////////////////////////////////////////////////////////
+    bool xo_args_try_get_string_array(xo_args_arg const * const arg,
+                                      char const *** out_string_array,
+                                      size_t * out_array_count);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    bool xo_args_try_get_int_array(xo_args_arg const * const arg,
+                                   int const ** out_int_array,
+                                   size_t * out_array_count);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
+                                    bool const ** out_bool_array,
+                                    size_t * out_array_count);
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif // defined(__cplusplus)
@@ -1261,5 +1276,38 @@ bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool)
     // switches are implicitly false until set - once set they are true
     *out_bool = arg->has_value;
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool xo_args_try_get_string_array(xo_args_arg const * const arg,
+                                  char const *** out_string_array,
+                                  size_t * out_array_count)
+{
+    (void)arg;
+    (void)out_string_array;
+    (void)out_array_count;
+    return false; // todo
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool xo_args_try_get_int_array(xo_args_arg const * const arg,
+                               int const ** out_int_array,
+                               size_t * out_array_count)
+{
+    (void)arg;
+    (void)out_int_array;
+    (void)out_array_count;
+    return false; // todo
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
+                                bool const ** out_bool_array,
+                                size_t * out_array_count)
+{
+    (void)arg;
+    (void)out_bool_array;
+    (void)out_array_count;
+    return false; // todo
 }
 #endif
