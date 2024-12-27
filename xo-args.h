@@ -740,10 +740,10 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 
     // Providing an argument multiple times is an error unless
     // the type of that argument is an array
-    if (arg->has_value
-        && arg->flags
-               & ~(XO_ARGS_TYPE_STRING_ARRAY | XO_ARGS_TYPE_BOOL_ARRAY
-                   | XO_ARGS_TYPE_INT_ARRAY))
+    if (arg->has_value && false ==
+            !!(arg->flags
+               & (XO_ARGS_TYPE_STRING_ARRAY | XO_ARGS_TYPE_BOOL_ARRAY
+                  | XO_ARGS_TYPE_INT_ARRAY)))
     {
         // Providing an argument multiple times is only valid for arrays
         context->print("Error: %s was provided multiple times which is "
@@ -875,7 +875,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     else if (arg->flags & XO_ARGS_TYPE_STRING_ARRAY)
     {
         _xo_args_arg_array * const array = (_xo_args_arg_array *)arg;
-        size_t const next_index = (*argv_index) + 1;
+        size_t next_index = (*argv_index) + 1;
         if (next_index >= (size_t)context->argc)
         {
             context->print("Error: No value provided for %s\n",
@@ -885,13 +885,58 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 
         char const * next_value = context->argv[next_index];
         size_t next_value_len = strlen(next_value);
-        char * const buff =
+        char * buff =
             (char *)_xo_args_tracked_alloc(context, next_value_len + 1);
         memcpy(buff, next_value, next_value_len + 1);
         _xo_args_arg_array_push(context, array, (void *)&buff, sizeof(char *));
         arg->has_value = true;
         *argv_index = next_index;
 
+        // Consume every following value until we see a valid argument
+        for (++next_index; next_index < (size_t)context->argc; ++next_index)
+        {
+            next_value = context->argv[next_index];
+            next_value_len = strlen(next_value);
+
+            if (next_value_len > 1 && next_value[0] == '-')
+            {
+                if (next_value_len > 2 && next_value[1] == '-')
+                {
+                    for (size_t j = 0; j < context->args_size; ++j)
+                    {
+                        xo_args_arg const * const other_arg = context->args[j];
+                        if (0 == strcmp(other_arg->name, &next_value[2]))
+                        {
+                            // The next argument is a valid arg so don't parse
+                            // that as a value of this string array
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    for (size_t j = 0; j < context->args_size; ++j)
+                    {
+                        xo_args_arg const * const other_arg = context->args[j];
+                        if (NULL != other_arg->short_name
+                            && 0
+                                   == strcmp(other_arg->short_name,
+                                             &next_value[1]))
+                        {
+                            // The next argument is a valid arg so don't parse
+                            // that as a value of this string array
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            buff = (char *)_xo_args_tracked_alloc(context, next_value_len + 1);
+            memcpy(buff, next_value, next_value_len + 1);
+            _xo_args_arg_array_push(
+                context, array, (void *)&buff, sizeof(char *));
+            *argv_index = next_index;
+        }
         return true;
     }
     else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
@@ -1283,10 +1328,34 @@ bool xo_args_try_get_string_array(xo_args_arg const * const arg,
                                   char const *** out_string_array,
                                   size_t * out_array_count)
 {
-    (void)arg;
-    (void)out_string_array;
-    (void)out_array_count;
-    return false; // todo
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_string_array)
+    {
+        XO_ARGS_ASSERT(NULL != out_string_array, "out param is null");
+        return false;
+    }
+    if (NULL == out_array_count)
+    {
+        XO_ARGS_ASSERT(NULL != out_array_count, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_STRING_ARRAY != (arg->flags & XO_ARGS_TYPE_STRING_ARRAY))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_STRING_ARRAY,
+                       "incorrect argument type");
+        return false;
+    }
+    if (arg->has_value)
+    {
+        *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
+        *out_string_array = (char const **)((_xo_args_arg_array *)arg)->array;
+        return true;
+    }
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1294,10 +1363,34 @@ bool xo_args_try_get_int_array(xo_args_arg const * const arg,
                                int const ** out_int_array,
                                size_t * out_array_count)
 {
-    (void)arg;
-    (void)out_int_array;
-    (void)out_array_count;
-    return false; // todo
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_int_array)
+    {
+        XO_ARGS_ASSERT(NULL != out_int_array, "out param is null");
+        return false;
+    }
+    if (NULL == out_array_count)
+    {
+        XO_ARGS_ASSERT(NULL != out_array_count, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_INT_ARRAY != (arg->flags & XO_ARGS_TYPE_INT_ARRAY))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_INT_ARRAY,
+                       "incorrect argument type");
+        return false;
+    }
+    if (arg->has_value)
+    {
+        *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
+        *out_int_array = (int const *)((_xo_args_arg_array *)arg)->array;
+        return true;
+    }
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1305,9 +1398,33 @@ bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
                                 bool const ** out_bool_array,
                                 size_t * out_array_count)
 {
-    (void)arg;
-    (void)out_bool_array;
-    (void)out_array_count;
-    return false; // todo
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_bool_array)
+    {
+        XO_ARGS_ASSERT(NULL != out_bool_array, "out param is null");
+        return false;
+    }
+    if (NULL == out_array_count)
+    {
+        XO_ARGS_ASSERT(NULL != out_array_count, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_BOOL_ARRAY != (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_BOOL_ARRAY,
+                       "incorrect argument type");
+        return false;
+    }
+    if (arg->has_value)
+    {
+        *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
+        *out_bool_array = (bool const *)((_xo_args_arg_array *)arg)->array;
+        return true;
+    }
+    return false;
 }
 #endif
