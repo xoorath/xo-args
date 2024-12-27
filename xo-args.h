@@ -304,6 +304,39 @@ struct xo_args_ctx
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+bool _xo_args_arg_flag_is_array(XO_ARGS_ARG_FLAG const flags)
+{
+    return !!(flags
+              & (XO_ARGS_TYPE_STRING_ARRAY | XO_ARGS_TYPE_INT_ARRAY
+                 | XO_ARGS_TYPE_BOOL_ARRAY));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool _xo_args_arg_matches_input(xo_args_arg const * const arg,
+                                char const * const str)
+{
+    size_t const str_len = strlen(str);
+    if (0 == str_len)
+    {
+        return false;
+    }
+    if ('-' == str[0])
+    {
+        if ((str_len > 2) && ('-' == str[1])
+            && (0 == strcmp(&str[2], arg->name)))
+        {
+            return true;
+        }
+        if ((NULL != arg->short_name)
+            && (0 == strcmp(&str[1], arg->short_name)))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void * _xo_args_tracked_alloc(xo_args_ctx * const context, size_t const size)
 {
     if (context->allocations_reserved == context->allocations_size)
@@ -740,10 +773,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 
     // Providing an argument multiple times is an error unless
     // the type of that argument is an array
-    if (arg->has_value && false ==
-            !!(arg->flags
-               & (XO_ARGS_TYPE_STRING_ARRAY | XO_ARGS_TYPE_BOOL_ARRAY
-                  | XO_ARGS_TYPE_INT_ARRAY)))
+    if (arg->has_value && false == _xo_args_arg_flag_is_array(arg->flags))
     {
         // Providing an argument multiple times is only valid for arrays
         context->print("Error: %s was provided multiple times which is "
@@ -898,36 +928,14 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             next_value = context->argv[next_index];
             next_value_len = strlen(next_value);
 
-            if (next_value_len > 1 && next_value[0] == '-')
+            for (size_t j = 0; j < context->args_size; ++j)
             {
-                if (next_value_len > 2 && next_value[1] == '-')
+                xo_args_arg const * const other_arg = context->args[j];
+                if (_xo_args_arg_matches_input(other_arg, next_value))
                 {
-                    for (size_t j = 0; j < context->args_size; ++j)
-                    {
-                        xo_args_arg const * const other_arg = context->args[j];
-                        if (0 == strcmp(other_arg->name, &next_value[2]))
-                        {
-                            // The next argument is a valid arg so don't parse
-                            // that as a value of this string array
-                            return true;
-                        }
-                    }
-                }
-                else
-                {
-                    for (size_t j = 0; j < context->args_size; ++j)
-                    {
-                        xo_args_arg const * const other_arg = context->args[j];
-                        if (NULL != other_arg->short_name
-                            && 0
-                                   == strcmp(other_arg->short_name,
-                                             &next_value[1]))
-                        {
-                            // The next argument is a valid arg so don't parse
-                            // that as a value of this string array
-                            return true;
-                        }
-                    }
+                    // The next argument is a valid arg so don't parse
+                    // that as a value of this string array
+                    return true;
                 }
             }
 
@@ -959,62 +967,53 @@ bool xo_args_submit(xo_args_ctx * const context)
 
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
-        char const * const a = context->argv[i];
-        size_t const a_len = strlen(a);
+        char const * const argv_arg = context->argv[i];
+        size_t const argv_arg_len = strlen(argv_arg);
 
         // This is an unexpected case but we will try to ignore it.
-        if (a_len == 0)
+        if (argv_arg_len == 0)
         {
             continue;
         }
         // All valid variables begin with '-' or '--' so a single
         // character argument at this position is unexpected
         // and so is a string not starting with '-'
-        else if (a_len == 1 || a[0] != '-')
+        else if (argv_arg_len == 1 || argv_arg[0] != '-')
         {
-            context->print("Error: unknown argument \"%s\"\n", a);
+            context->print("Error: unknown argument \"%s\"\n", argv_arg);
             _xo_print_try_help(context);
             return false;
         }
         // At this point there is a chance the user has input a valid argument
         else
         {
-            if (a[1] == '-')
+            bool parsed_arg = false;
+            for (size_t j = 0; j < context->args_size; ++j)
             {
-                for (size_t j = 0; j < context->args_size; ++j)
+                if (_xo_args_arg_matches_input(context->args[j], argv_arg))
                 {
-                    // a+2 to advance past '--'
-                    if (0 == strcmp(a + 2, context->args[j]->name))
+                    if (false
+                        == _xo_args_try_parse_arg(
+                            context, &i, context->args[j]))
                     {
-                        if (false
-                            == _xo_args_try_parse_arg(
-                                context, &i, context->args[j]))
-                        {
-                            _xo_print_try_help(context);
-                            return false;
-                        }
-                        break;
+                        _xo_print_try_help(context);
+                        return false;
                     }
+                    parsed_arg = true;
+                    break;
                 }
+            }
+            if (parsed_arg)
+            {
+                continue;
             }
             else
             {
-                for (size_t j = 0; j < context->args_size; ++j)
-                {
-                    // a+1 to advance past '-'
-                    if ((NULL != context->args[j]->short_name)
-                        && 0 == strcmp(a + 1, context->args[j]->short_name))
-                    {
-                        if (false
-                            == _xo_args_try_parse_arg(
-                                context, &i, context->args[j]))
-                        {
-                            _xo_print_try_help(context);
-                            return false;
-                        }
-                        break;
-                    }
-                }
+                // the argv_arg looks like an argument but didn't match any
+                // known arguments.
+                context->print("Error: unknown argument \"%s\"\n", argv_arg);
+                _xo_print_try_help(context);
+                return false;
             }
         }
     }
@@ -1162,9 +1161,7 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     _xo_args_arg_single * arg_single = NULL;
     _xo_args_arg_array * arg_array = NULL;
 
-    if (flags
-        & (XO_ARGS_TYPE_STRING_ARRAY | XO_ARGS_TYPE_INT_ARRAY
-           | XO_ARGS_TYPE_BOOL_ARRAY))
+    if (_xo_args_arg_flag_is_array(flags))
     {
         arg_array = (_xo_args_arg_array *)_xo_args_tracked_alloc(
             context, sizeof(_xo_args_arg_array));
