@@ -786,6 +786,27 @@ bool _xo_args_try_parse_int(char const * const input, int * out_int)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool _xo_args_try_parse_bool(char const * const input, bool * out_bool)
+{
+    if (0 == strcmp(input, "0") || 0 == strcmp(input, "false")
+        || 0 == strcmp(input, "False") || 0 == strcmp(input, "FALSE"))
+    {
+        *out_bool = false;
+        return true;
+    }
+    else if (0 == strcmp(input, "1") || 0 == strcmp(input, "true")
+             || 0 == strcmp(input, "True") || 0 == strcmp(input, "TRUE"))
+    {
+        *out_bool = true;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // A helper to try and parse out a single argument.
 //
 // argv_index should be the index into argv where the variable name was found
@@ -841,31 +862,19 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             return false;
         }
         char const * const next_value = context->argv[next_index];
-        if (0 == strcmp(next_value, "0") || 0 == strcmp(next_value, "false")
-            || 0 == strcmp(next_value, "False")
-            || 0 == strcmp(next_value, "FALSE"))
+
+        if (_xo_args_try_parse_bool(next_value,
+                                    &((_xo_args_arg_single *)arg)->value._bool))
         {
-            ((_xo_args_arg_single *)arg)->value._bool = false;
             arg->has_value = true;
             *argv_index = next_index;
             return true;
         }
-        else if (0 == strcmp(next_value, "1") || 0 == strcmp(next_value, "true")
-                 || 0 == strcmp(next_value, "True")
-                 || 0 == strcmp(next_value, "TRUE"))
-        {
-            ((_xo_args_arg_single *)arg)->value._bool = true;
-            arg->has_value = true;
-            *argv_index = next_index;
-            return true;
-        }
-        else
-        {
-            context->print("Error: Invalid value provided for %s\n"
-                           "expected true or false.\n",
-                           context->argv[*argv_index]);
-            return false;
-        }
+
+        context->print("Error: Invalid value provided for %s\n"
+                       "expected true or false.\n",
+                       context->argv[*argv_index]);
+        return false;
     }
     else if (arg->flags & XO_ARGS_TYPE_INT)
     {
@@ -1030,6 +1039,66 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
     {
+        char const * argv_name = context->argv[*argv_index];
+        _xo_args_arg_array * const array = (_xo_args_arg_array *)arg;
+        size_t next_index = (*argv_index) + 1;
+        if (next_index >= (size_t)context->argc)
+        {
+            context->print("Error: No value provided for %s\n",
+                           argv_name);
+            return false;
+        }
+        char const * next_value = context->argv[next_index];
+
+        bool parsed_value;
+        if (_xo_args_try_parse_bool(next_value, &parsed_value))
+        {
+            _xo_args_arg_array_push(
+                context, array, &parsed_value, sizeof(bool));
+            arg->has_value = true;
+            *argv_index = next_index;
+        }
+        else
+        {
+            context->print("Error: Invalid value provided for %s\n"
+                           "expected true or false.\n",
+                           argv_name);
+            return false;
+        }
+
+        // Consume every following value until we see a valid argument
+        for (++next_index; next_index < (size_t)context->argc; ++next_index)
+        {
+            next_value = context->argv[next_index];
+
+            for (size_t j = 0; j < context->args_size; ++j)
+            {
+                xo_args_arg const * const other_arg = context->args[j];
+                if (_xo_args_arg_matches_input(other_arg, next_value))
+                {
+                    // The next argument is a valid arg so don't parse
+                    // that as a value of this string array
+                    return true;
+                }
+            }
+
+            if (_xo_args_try_parse_bool(next_value, &parsed_value))
+            {
+                _xo_args_arg_array_push(
+                    context, array, &parsed_value, sizeof(bool));
+                arg->has_value = true;
+                *argv_index = next_index;
+            }
+            else
+            {
+                context->print("Error: Invalid value provided for %s\n"
+                               "expected true or false.\n",
+                               argv_name);
+                return false;
+            }
+        }
+
+        return true;
     }
     return true;
 }
