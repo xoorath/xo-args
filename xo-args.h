@@ -762,6 +762,30 @@ xo_args_ctx * xo_args_create_ctx(xo_argc_t const argc, xo_argv_t const argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool _xo_args_try_parse_int(char const * const input, int * out_int)
+{
+    size_t const input_len = strlen(input);
+
+    if (0 == input_len)
+    {
+        return false;
+    }
+
+    errno = 0;
+    char * end_ptr;
+    long const long_val = strtol(input, &end_ptr, 0);
+    int const parsed_val = (int)long_val;
+
+    if (0 != errno || '\0' != *end_ptr || long_val != (long)parsed_val)
+    {
+        return false;
+    }
+
+    *out_int = parsed_val;
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // A helper to try and parse out a single argument.
 //
 // argv_index should be the index into argv where the variable name was found
@@ -845,6 +869,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_INT)
     {
+        char const * argv_name = context->argv[*argv_index];
         size_t const next_index = (*argv_index) + 1;
         if (next_index >= (size_t)context->argc)
         {
@@ -852,33 +877,22 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
                            context->argv[*argv_index]);
             return false;
         }
-        char const * const next_value = context->argv[next_index];
-        size_t const next_value_length = strlen(next_value);
-        if (0 == next_value_length)
+
+        int parsed_value;
+        if (true
+            == _xo_args_try_parse_int(context->argv[next_index], &parsed_value))
         {
-            context->print("Error: Value for %s is not a valid integer or is "
-                           "out of range\n",
-                           context->argv[*argv_index]);
-            return false;
+            ((_xo_args_arg_single *)arg)->value._int = parsed_value;
+            arg->has_value = true;
+            *argv_index = next_index;
+            return true;
         }
 
-        errno = 0;
-        char * end_ptr;
-        long const long_val = strtol(next_value, &end_ptr, 0);
-        int const parsed_val = (int)long_val;
+        context->print("Error: Value for %s is not a valid integer or is "
+                       "out of range\n",
+                       argv_name);
 
-        if (0 != errno || '\0' != *end_ptr || long_val != (long)parsed_val)
-        {
-            context->print("Error: Value for %s is not a valid integer or is "
-                           "out of range\n",
-                           context->argv[*argv_index]);
-            return false;
-        }
-
-        ((_xo_args_arg_single *)arg)->value._int = parsed_val;
-        arg->has_value = true;
-        *argv_index = next_index;
-        return true;
+        return false;
     }
     // For string arrays we expect and consume the next argument no matter what
     // then we continue to take the following strings until a valid argument is
@@ -947,10 +961,74 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
         }
         return true;
     }
-    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
-    {
-    }
     else if (arg->flags & XO_ARGS_TYPE_INT_ARRAY)
+    {
+        char const * argv_name = context->argv[*argv_index];
+        _xo_args_arg_array * const array = (_xo_args_arg_array *)arg;
+        size_t next_index = (*argv_index) + 1;
+        if (next_index >= (size_t)context->argc)
+        {
+            context->print("Error: No value provided for %s\n",
+                           context->argv[*argv_index]);
+            return false;
+        }
+
+        char const * next_value = context->argv[next_index];
+        int parsed_value;
+
+        if (true
+            == _xo_args_try_parse_int(context->argv[next_index], &parsed_value))
+        {
+            _xo_args_arg_array_push(context, array, &parsed_value, sizeof(int));
+            arg->has_value = true;
+            *argv_index = next_index;
+        }
+        else
+        {
+            context->print("Error: Value for %s is not a valid integer or is "
+                           "out of range\n",
+                           argv_name);
+            return false;
+        }
+
+        // Consume every following value until we see a valid argument
+        for (++next_index; next_index < (size_t)context->argc; ++next_index)
+        {
+            next_value = context->argv[next_index];
+
+            for (size_t j = 0; j < context->args_size; ++j)
+            {
+                xo_args_arg const * const other_arg = context->args[j];
+                if (_xo_args_arg_matches_input(other_arg, next_value))
+                {
+                    // The next argument is a valid arg so don't parse
+                    // that as a value of this string array
+                    return true;
+                }
+            }
+
+            if (true
+                == _xo_args_try_parse_int(context->argv[next_index],
+                                          &parsed_value))
+            {
+                _xo_args_arg_array_push(
+                    context, array, &parsed_value, sizeof(int));
+                arg->has_value = true;
+                *argv_index = next_index;
+            }
+            else
+            {
+                context->print(
+                    "Error: Value for %s is not a valid integer or is "
+                    "out of range\n",
+                    argv_name);
+                return false;
+            }
+        }
+
+        return true;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
     {
     }
     return true;
@@ -1346,7 +1424,7 @@ bool xo_args_try_get_string_array(xo_args_arg const * const arg,
                        "incorrect argument type");
         return false;
     }
-    if (arg->has_value)
+    if (true == arg->has_value)
     {
         *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
         *out_string_array = (char const **)((_xo_args_arg_array *)arg)->array;
@@ -1381,7 +1459,7 @@ bool xo_args_try_get_int_array(xo_args_arg const * const arg,
                        "incorrect argument type");
         return false;
     }
-    if (arg->has_value)
+    if (true == arg->has_value)
     {
         *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
         *out_int_array = (int const *)((_xo_args_arg_array *)arg)->array;
@@ -1416,7 +1494,7 @@ bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
                        "incorrect argument type");
         return false;
     }
-    if (arg->has_value)
+    if (true == arg->has_value)
     {
         *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
         *out_bool_array = (bool const *)((_xo_args_arg_array *)arg)->array;
