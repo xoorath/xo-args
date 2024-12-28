@@ -189,7 +189,7 @@ extern "C"
                                 char const ** out_string);
 
     ////////////////////////////////////////////////////////////////////////////////
-    bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int);
+    bool xo_args_try_get_int(xo_args_arg const * const arg, int64_t * out_int);
 
     ////////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool);
@@ -201,7 +201,7 @@ extern "C"
 
     ////////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_int_array(xo_args_arg const * const arg,
-                                   int const ** out_int_array,
+                                   int64_t const ** out_int_array,
                                    size_t * out_array_count);
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -264,8 +264,8 @@ typedef struct _xo_args_arg_single
     union
     {
         bool _bool;
-        int _int;
         char * _string;
+        int64_t _int;
     } value;
 } _xo_args_arg_single;
 
@@ -762,7 +762,7 @@ xo_args_ctx * xo_args_create_ctx(xo_argc_t const argc, xo_argv_t const argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool _xo_args_try_parse_int(char const * const input, int * out_int)
+bool _xo_args_try_parse_int(char const * const input, int64_t * out_int)
 {
     size_t const input_len = strlen(input);
 
@@ -773,10 +773,10 @@ bool _xo_args_try_parse_int(char const * const input, int * out_int)
 
     errno = 0;
     char * end_ptr;
-    long const long_val = strtol(input, &end_ptr, 0);
-    int const parsed_val = (int)long_val;
+    long long const long_val = strtoll(input, &end_ptr, 0);
+    int64_t const parsed_val = (int64_t)long_val;
 
-    if (0 != errno || '\0' != *end_ptr || long_val != (long)parsed_val)
+    if (0 != errno || '\0' != *end_ptr || long_val != (long long)parsed_val)
     {
         return false;
     }
@@ -887,7 +887,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             return false;
         }
 
-        int parsed_value;
+        int64_t parsed_value;
         if (true
             == _xo_args_try_parse_int(context->argv[next_index], &parsed_value))
         {
@@ -983,12 +983,12 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
         }
 
         char const * next_value = context->argv[next_index];
-        int parsed_value;
+        int64_t parsed_value;
 
         if (true
             == _xo_args_try_parse_int(context->argv[next_index], &parsed_value))
         {
-            _xo_args_arg_array_push(context, array, &parsed_value, sizeof(int));
+            _xo_args_arg_array_push(context, array, &parsed_value, sizeof(int64_t));
             arg->has_value = true;
             *argv_index = next_index;
         }
@@ -1021,7 +1021,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
                                           &parsed_value))
             {
                 _xo_args_arg_array_push(
-                    context, array, &parsed_value, sizeof(int));
+                    context, array, &parsed_value, sizeof(int64_t));
                 arg->has_value = true;
                 *argv_index = next_index;
             }
@@ -1402,7 +1402,7 @@ bool xo_args_try_get_string(xo_args_arg const * const arg,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool xo_args_try_get_int(xo_args_arg const * const arg, int * out_int)
+bool xo_args_try_get_int(xo_args_arg const * const arg, int64_t * out_int)
 {
     if (NULL == arg)
     {
@@ -1504,7 +1504,7 @@ bool xo_args_try_get_string_array(xo_args_arg const * const arg,
 
 ////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_int_array(xo_args_arg const * const arg,
-                               int const ** out_int_array,
+                               int64_t const ** out_int_array,
                                size_t * out_array_count)
 {
     if (NULL == arg)
@@ -1531,7 +1531,7 @@ bool xo_args_try_get_int_array(xo_args_arg const * const arg,
     if (true == arg->has_value)
     {
         *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
-        *out_int_array = (int const *)((_xo_args_arg_array *)arg)->array;
+        *out_int_array = (int64_t const *)((_xo_args_arg_array *)arg)->array;
         return true;
     }
     return false;
