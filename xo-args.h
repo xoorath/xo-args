@@ -139,17 +139,19 @@ extern "C"
 
     typedef enum XO_ARGS_ARG_FLAG
     {
-        // If no type flag is set the default is string
         XO_ARGS_TYPE_STRING = 1 << 0,
+        // To get the value of a switch: use xo_args_try_get_bool
         XO_ARGS_TYPE_SWITCH = 1 << 1,
         XO_ARGS_TYPE_BOOL = 1 << 2,
         XO_ARGS_TYPE_INT = 1 << 3,
-        XO_ARGS_TYPE_STRING_ARRAY = 1 << 4,
-        XO_ARGS_TYPE_BOOL_ARRAY = 1 << 5,
-        XO_ARGS_TYPE_INT_ARRAY = 1 << 6,
+        XO_ARGS_TYPE_DOUBLE = 1 << 4,
+        XO_ARGS_TYPE_STRING_ARRAY = 1 << 5,
+        XO_ARGS_TYPE_BOOL_ARRAY = 1 << 6,
+        XO_ARGS_TYPE_INT_ARRAY = 1 << 7,
+        XO_ARGS_TYPE_DOUBLE_ARRAY = 1 << 8,
 
         XO_ARGS_ARG_OPTIONAL = 0,
-        XO_ARGS_ARG_REQUIRED = 1 << 7
+        XO_ARGS_ARG_REQUIRED = 1 << 9
     } XO_ARGS_ARG_FLAG;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +194,10 @@ extern "C"
     bool xo_args_try_get_int(xo_args_arg const * const arg, int64_t * out_int);
 
     ////////////////////////////////////////////////////////////////////////////////
+    bool xo_args_try_get_double(xo_args_arg const * const arg,
+                                double * out_int);
+
+    ////////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool);
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -203,6 +209,11 @@ extern "C"
     bool xo_args_try_get_int_array(xo_args_arg const * const arg,
                                    int64_t const ** out_int_array,
                                    size_t * out_array_count);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    bool xo_args_try_get_double_array(xo_args_arg const * const arg,
+                                      double const ** out_double_array,
+                                      size_t * out_array_count);
 
     ////////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
@@ -266,6 +277,7 @@ typedef struct _xo_args_arg_single
         bool _bool;
         char * _string;
         int64_t _int;
+        double _double;
     } value;
 } _xo_args_arg_single;
 
@@ -308,7 +320,7 @@ bool _xo_args_arg_flag_is_array(XO_ARGS_ARG_FLAG const flags)
 {
     return !!(flags
               & (XO_ARGS_TYPE_STRING_ARRAY | XO_ARGS_TYPE_INT_ARRAY
-                 | XO_ARGS_TYPE_BOOL_ARRAY));
+                 | XO_ARGS_TYPE_DOUBLE_ARRAY | XO_ARGS_TYPE_BOOL_ARRAY));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -612,6 +624,10 @@ void _xo_print_help(xo_args_ctx const * const context)
                 {
                     printf("\t\tinteger\n");
                 }
+                else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
+                {
+                    printf("\t\tdouble\n");
+                }
                 else if (arg->flags & XO_ARGS_TYPE_BOOL)
                 {
                     printf("\t\ttrue|false\n");
@@ -776,7 +792,8 @@ bool _xo_args_try_parse_int(char const * const input, int64_t * out_int)
     long long const long_val = strtoll(input, &end_ptr, 0);
     int64_t const parsed_val = (int64_t)long_val;
 
-    if (0 != errno || '\0' != *end_ptr || long_val != (long long)parsed_val)
+    if (0 != errno || '\0' != *end_ptr || long_val != (long long)parsed_val
+        || input == end_ptr)
     {
         return false;
     }
@@ -804,6 +821,21 @@ bool _xo_args_try_parse_bool(char const * const input, bool * out_bool)
     {
         return false;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool _xo_args_try_parse_double(char const * const input, double * out_double)
+{
+    errno = 0;
+    char * end_ptr;
+    *out_double = strtod(input, &end_ptr);
+
+    if (0 != errno || '\0' != *end_ptr || input == end_ptr)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,6 +935,34 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 
         return false;
     }
+    else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
+    {
+        char const * argv_name = context->argv[*argv_index];
+        size_t const next_index = (*argv_index) + 1;
+        if (next_index >= (size_t)context->argc)
+        {
+            context->print("Error: No value provided for %s\n",
+                           context->argv[*argv_index]);
+            return false;
+        }
+
+        double parsed_value;
+        if (true
+            == _xo_args_try_parse_double(context->argv[next_index],
+                                         &parsed_value))
+        {
+            ((_xo_args_arg_single *)arg)->value._double = parsed_value;
+            arg->has_value = true;
+            *argv_index = next_index;
+            return true;
+        }
+
+        context->print("Error: Value for %s is not a valid number or is "
+                       "out of range\n",
+                       argv_name);
+
+        return false;
+    }
     // For string arrays we expect and consume the next argument no matter what
     // then we continue to take the following strings until a valid argument is
     // encountered or we are out of arguments.
@@ -988,7 +1048,8 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
         if (true
             == _xo_args_try_parse_int(context->argv[next_index], &parsed_value))
         {
-            _xo_args_arg_array_push(context, array, &parsed_value, sizeof(int64_t));
+            _xo_args_arg_array_push(
+                context, array, &parsed_value, sizeof(int64_t));
             arg->has_value = true;
             *argv_index = next_index;
         }
@@ -1037,7 +1098,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
 
         return true;
     }
-    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
+    else if (arg->flags & XO_ARGS_TYPE_DOUBLE_ARRAY)
     {
         char const * argv_name = context->argv[*argv_index];
         _xo_args_arg_array * const array = (_xo_args_arg_array *)arg;
@@ -1045,7 +1106,75 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
         if (next_index >= (size_t)context->argc)
         {
             context->print("Error: No value provided for %s\n",
+                           context->argv[*argv_index]);
+            return false;
+        }
+
+        char const * next_value = context->argv[next_index];
+        double parsed_value;
+
+        if (true
+            == _xo_args_try_parse_double(context->argv[next_index],
+                                         &parsed_value))
+        {
+            _xo_args_arg_array_push(
+                context, array, &parsed_value, sizeof(double));
+            arg->has_value = true;
+            *argv_index = next_index;
+        }
+        else
+        {
+            context->print("Error: Value for %s is not a valid number or is "
+                           "out of range\n",
                            argv_name);
+            return false;
+        }
+
+        // Consume every following value until we see a valid argument
+        for (++next_index; next_index < (size_t)context->argc; ++next_index)
+        {
+            next_value = context->argv[next_index];
+
+            for (size_t j = 0; j < context->args_size; ++j)
+            {
+                xo_args_arg const * const other_arg = context->args[j];
+                if (_xo_args_arg_matches_input(other_arg, next_value))
+                {
+                    // The next argument is a valid arg so don't parse
+                    // that as a value of this string array
+                    return true;
+                }
+            }
+
+            if (true
+                == _xo_args_try_parse_double(context->argv[next_index],
+                                             &parsed_value))
+            {
+                _xo_args_arg_array_push(
+                    context, array, &parsed_value, sizeof(double));
+                arg->has_value = true;
+                *argv_index = next_index;
+            }
+            else
+            {
+                context->print(
+                    "Error: Value for %s is not a valid number or is "
+                    "out of range\n",
+                    argv_name);
+                return false;
+            }
+        }
+
+        return true;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
+    {
+        char const * argv_name = context->argv[*argv_index];
+        _xo_args_arg_array * const array = (_xo_args_arg_array *)arg;
+        size_t next_index = (*argv_index) + 1;
+        if (next_index >= (size_t)context->argc)
+        {
+            context->print("Error: No value provided for %s\n", argv_name);
             return false;
         }
         char const * next_value = context->argv[next_index];
@@ -1257,7 +1386,8 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     XO_ARGS_ARG_FLAG const all_types =
         (XO_ARGS_ARG_FLAG)(XO_ARGS_TYPE_STRING | XO_ARGS_TYPE_SWITCH
                            | XO_ARGS_TYPE_BOOL | XO_ARGS_TYPE_INT
-                           | XO_ARGS_TYPE_BOOL_ARRAY | XO_ARGS_TYPE_INT_ARRAY
+                           | XO_ARGS_TYPE_DOUBLE | XO_ARGS_TYPE_BOOL_ARRAY
+                           | XO_ARGS_TYPE_INT_ARRAY | XO_ARGS_TYPE_DOUBLE_ARRAY
                            | XO_ARGS_TYPE_STRING_ARRAY);
     {
         // Extract the type from the provided flags and count the set bits
@@ -1429,6 +1559,33 @@ bool xo_args_try_get_int(xo_args_arg const * const arg, int64_t * out_int)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool xo_args_try_get_double(xo_args_arg const * const arg, double * out_double)
+{
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_double)
+    {
+        XO_ARGS_ASSERT(NULL != out_double, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_DOUBLE != (arg->flags & XO_ARGS_TYPE_DOUBLE))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_DOUBLE,
+                       "incorrect argument type");
+        return false;
+    }
+    if (arg->has_value)
+    {
+        *out_double = ((_xo_args_arg_single *)arg)->value._double;
+        return true;
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool)
 {
     if (NULL == arg)
@@ -1532,6 +1689,41 @@ bool xo_args_try_get_int_array(xo_args_arg const * const arg,
     {
         *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
         *out_int_array = (int64_t const *)((_xo_args_arg_array *)arg)->array;
+        return true;
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool xo_args_try_get_double_array(xo_args_arg const * const arg,
+                                  double const ** out_double_array,
+                                  size_t * out_array_count)
+{
+    if (NULL == arg)
+    {
+        XO_ARGS_ASSERT(NULL != arg, "argument is null");
+        return false;
+    }
+    if (NULL == out_double_array)
+    {
+        XO_ARGS_ASSERT(NULL != out_double_array, "out param is null");
+        return false;
+    }
+    if (NULL == out_array_count)
+    {
+        XO_ARGS_ASSERT(NULL != out_array_count, "out param is null");
+        return false;
+    }
+    if (XO_ARGS_TYPE_DOUBLE_ARRAY != (arg->flags & XO_ARGS_TYPE_DOUBLE_ARRAY))
+    {
+        XO_ARGS_ASSERT(arg->flags & XO_ARGS_TYPE_INT_ARRAY,
+                       "incorrect argument type");
+        return false;
+    }
+    if (true == arg->has_value)
+    {
+        *out_array_count = ((_xo_args_arg_array *)arg)->array_size;
+        *out_double_array = (double const *)((_xo_args_arg_array *)arg)->array;
         return true;
     }
     return false;
