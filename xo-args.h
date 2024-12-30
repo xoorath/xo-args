@@ -181,6 +181,15 @@ extern "C"
     void xo_args_destroy_ctx(xo_args_ctx * const context);
 
     ////////////////////////////////////////////////////////////////////////////////
+    // Prints the generated help text. This is done automatically during submit
+    // if the program arguments contain --help (as a switch, not a string value
+    // which would be consumed / ignored)
+    //
+    // This function should only be called after xo_args_submit has returned
+    // true.
+    void xo_args_print_help(xo_args_ctx const * const context);
+
+    ////////////////////////////////////////////////////////////////////////////////
     xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                       char const * const name,
                                       char const * const short_name,
@@ -313,6 +322,8 @@ struct xo_args_ctx
     xo_args_arg ** args;
     size_t args_reserved;
     size_t args_size;
+
+    bool submitted;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,8 +335,27 @@ bool _xo_args_arg_flag_is_array(XO_ARGS_ARG_FLAG const flags)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+typedef enum _xo_args_arg_match_type
+{
+    _XO_ARGS_ARG_MATCH_TYPE_NAME,
+    _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME,
+    _XO_ARGS_ARG_MATCH_TYPE_SHORT_NAME,
+    _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME
+} _xo_args_arg_match_type;
+
+////////////////////////////////////////////////////////////////////////////////
+typedef struct _xo_args_arg_match
+{
+    _xo_args_arg_match_type match_type;
+    // May represent a name or short_name
+    char const * matched_name;
+    size_t matched_name_length;
+} _xo_args_arg_match;
+
+////////////////////////////////////////////////////////////////////////////////
 bool _xo_args_arg_matches_input(xo_args_arg const * const arg,
-                                char const * const str)
+                                char const * const str,
+                                _xo_args_arg_match * out_match)
 {
     size_t const str_len = strlen(str);
     if (0 == str_len)
@@ -334,15 +364,59 @@ bool _xo_args_arg_matches_input(xo_args_arg const * const arg,
     }
     if ('-' == str[0])
     {
+        size_t const arg_name_len = strlen(arg->name);
         if ((str_len > 2) && ('-' == str[1])
-            && (0 == strcmp(&str[2], arg->name)))
+            && (0 == strncmp(&str[2], arg->name, arg_name_len)))
         {
-            return true;
+            if (str_len - 2 == arg_name_len)
+            {
+                if (NULL != out_match)
+                {
+                    out_match->match_type = _XO_ARGS_ARG_MATCH_TYPE_NAME;
+                    out_match->matched_name = arg->name;
+                    out_match->matched_name_length = arg_name_len;
+                }
+                return true;
+            }
+            if ('=' == str[arg_name_len + 2])
+            {
+                if (NULL != out_match)
+                {
+                    out_match->match_type = _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME;
+                    out_match->matched_name = arg->name;
+                    out_match->matched_name_length = arg_name_len;
+                }
+                return true;
+            }
+            return false;
         }
+        size_t const arg_short_name_len =
+            (NULL == arg->short_name) ? 0 : strlen(arg->short_name);
         if ((NULL != arg->short_name)
-            && (0 == strcmp(&str[1], arg->short_name)))
+            && (0 == strncmp(&str[1], arg->short_name, arg_short_name_len)))
         {
-            return true;
+            if (str_len - 1 == arg_short_name_len)
+            {
+                if (NULL != out_match)
+                {
+                    out_match->match_type = _XO_ARGS_ARG_MATCH_TYPE_SHORT_NAME;
+                    out_match->matched_name = arg->short_name;
+                    out_match->matched_name_length = arg_short_name_len;
+                }
+                return true;
+            }
+            if ('=' == str[arg_short_name_len + 1])
+            {
+                if (NULL != out_match)
+                {
+                    out_match->match_type =
+                        _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME;
+                    out_match->matched_name = arg->short_name;
+                    out_match->matched_name_length = arg_short_name_len;
+                }
+                return true;
+            }
+            return false;
         }
     }
     return false;
@@ -555,7 +629,7 @@ void _xo_print_try_help(xo_args_ctx const * const context)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void _xo_print_help(xo_args_ctx const * const context)
+void xo_args_print_help(xo_args_ctx const * const context)
 {
     if (NULL != context->app_version)
     {
@@ -708,6 +782,7 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
     context->allocations_reserved = 8;
     context->allocations =
         (void **)context->alloc(context->allocations_reserved * sizeof(void *));
+    context->submitted = false;
 
     // Default app_name is the filename parsed from argv[0]
     if (NULL == app_name)
@@ -780,9 +855,10 @@ xo_args_ctx * xo_args_create_ctx(xo_argc_t const argc, xo_argv_t const argv)
 ////////////////////////////////////////////////////////////////////////////////
 bool _xo_args_try_parse_int(char const * const input, int64_t * out_int)
 {
-    size_t const input_len = strlen(input);
-
-    if (0 == input_len)
+    // strtoll will discard any leading whitespace.
+    // I would prefer we only accept integers with no leading whitespace so we
+    // can accomplish this by just checking the first character here:
+    if ('\0' == input[0] || isspace(input[0]))
     {
         return false;
     }
@@ -826,6 +902,14 @@ bool _xo_args_try_parse_bool(char const * const input, bool * out_bool)
 ////////////////////////////////////////////////////////////////////////////////
 bool _xo_args_try_parse_double(char const * const input, double * out_double)
 {
+    // strtod will discard any leading whitespace.
+    // I would prefer we only accept integers with no leading whitespace so we
+    // can accomplish this by just checking the first character here:
+    if ('\0' == input[0] || isspace(input[0]))
+    {
+        return false;
+    }
+
     errno = 0;
     char * end_ptr;
     *out_double = strtod(input, &end_ptr);
@@ -845,7 +929,8 @@ bool _xo_args_try_parse_double(char const * const input, double * out_double)
 // it will be automatically advanced as the value of the argument is parsed.
 bool _xo_args_try_parse_arg(xo_args_ctx * const context,
                             size_t * const argv_index,
-                            xo_args_arg * const arg)
+                            xo_args_arg * const arg,
+                            _xo_args_arg_match const * const match)
 {
 
     // Providing an argument multiple times is an error unless
@@ -860,6 +945,30 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     if (arg->flags & XO_ARGS_TYPE_STRING)
     {
+        if (_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type
+            || _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME == match->match_type)
+        {
+            // This is an offset from the start of the user-input argument until
+            // the value begins (after the assignment operator). The value 3
+            // accounts for "--" and "=" in a name based assignment.. The value
+            // 2 accounts for a single "-" and "=" in a short name assignment.
+            size_t const offset =
+                ((_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type) ? 3
+                                                                            : 2)
+                + match->matched_name_length;
+
+            char const * const argv_value = context->argv[*argv_index];
+            size_t const argv_value_length = strlen(argv_value);
+
+            char * const buff = (char *)_xo_args_tracked_alloc(
+                context, (argv_value_length - offset) + 1);
+            // +1 here will copy the null terminator from argv_value
+            memcpy(buff, &argv_value[offset], argv_value_length - offset + 1);
+            ((_xo_args_arg_single *)arg)->value._string = buff;
+            arg->has_value = true;
+            return true;
+        }
+
         size_t const next_index = (*argv_index) + 1;
         if (next_index >= (size_t)context->argc)
         {
@@ -886,6 +995,34 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_BOOL)
     {
+        if (_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type
+            || _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME == match->match_type)
+        {
+            // This is an offset from the start of the user-input argument until
+            // the value begins (after the assignment operator). The value 3
+            // accounts for "--" and "=" in a name based assignment.. The value
+            // 2 accounts for a single "-" and "=" in a short name assignment.
+            size_t const offset =
+                ((_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type) ? 3
+                                                                            : 2)
+                + match->matched_name_length;
+
+            char const * const argv_value = context->argv[*argv_index];
+
+            if (_xo_args_try_parse_bool(
+                    &argv_value[offset],
+                    &((_xo_args_arg_single *)arg)->value._bool))
+            {
+                arg->has_value = true;
+                return true;
+            }
+
+            context->print("Error: Invalid value provided for %s\n"
+                           "expected true or false.\n",
+                           context->argv[*argv_index]);
+            return false;
+        }
+
         size_t const next_index = (*argv_index) + 1;
         if (next_index >= (size_t)context->argc)
         {
@@ -910,6 +1047,36 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_INT)
     {
+        if (_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type
+            || _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME == match->match_type)
+        {
+            // This is an offset from the start of the user-input argument until
+            // the value begins (after the assignment operator). The value 3
+            // accounts for "--" and "=" in a name based assignment.. The value
+            // 2 accounts for a single "-" and "=" in a short name assignment.
+            size_t const offset =
+                ((_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type) ? 3
+                                                                            : 2)
+                + match->matched_name_length;
+
+            char const * const argv_value = context->argv[*argv_index];
+
+            int64_t parsed_value;
+            if (true
+                == _xo_args_try_parse_int(&argv_value[offset], &parsed_value))
+            {
+                ((_xo_args_arg_single *)arg)->value._int = parsed_value;
+                arg->has_value = true;
+                return true;
+            }
+
+            context->print("Error: Value for %.*s is not a valid integer or is "
+                           "out of range\n",
+                           offset - 1u,
+                           context->argv[*argv_index]);
+
+            return false;
+        }
         char const * argv_name = context->argv[*argv_index];
         size_t const next_index = (*argv_index) + 1;
         if (next_index >= (size_t)context->argc)
@@ -937,6 +1104,38 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
     {
+        if (_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type
+            || _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME == match->match_type)
+        {
+            // This is an offset from the start of the user-input argument until
+            // the value begins (after the assignment operator). The value 3
+            // accounts for "--" and "=" in a name based assignment.. The value
+            // 2 accounts for a single "-" and "=" in a short name assignment.
+            size_t const offset =
+                ((_XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME == match->match_type) ? 3
+                                                                            : 2)
+                + match->matched_name_length;
+
+            char const * const argv_value = context->argv[*argv_index];
+
+            double parsed_value;
+            if (true
+                == _xo_args_try_parse_double(&argv_value[offset],
+                                             &parsed_value))
+            {
+                ((_xo_args_arg_single *)arg)->value._double = parsed_value;
+                arg->has_value = true;
+                return true;
+            }
+
+            context->print("Error: Value for %.*s is not a valid number or is "
+                           "out of range\n",
+                           offset - 1u,
+                           context->argv[*argv_index]);
+
+            return false;
+        }
+
         char const * argv_name = context->argv[*argv_index];
         size_t const next_index = (*argv_index) + 1;
         if (next_index >= (size_t)context->argc)
@@ -1014,7 +1213,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             for (size_t j = 0; j < context->args_size; ++j)
             {
                 xo_args_arg const * const other_arg = context->args[j];
-                if (_xo_args_arg_matches_input(other_arg, next_value))
+                if (_xo_args_arg_matches_input(other_arg, next_value, NULL))
                 {
                     // The next argument is a valid arg so don't parse
                     // that as a value of this string array
@@ -1069,7 +1268,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             for (size_t j = 0; j < context->args_size; ++j)
             {
                 xo_args_arg const * const other_arg = context->args[j];
-                if (_xo_args_arg_matches_input(other_arg, next_value))
+                if (_xo_args_arg_matches_input(other_arg, next_value, NULL))
                 {
                     // The next argument is a valid arg so don't parse
                     // that as a value of this string array
@@ -1138,7 +1337,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             for (size_t j = 0; j < context->args_size; ++j)
             {
                 xo_args_arg const * const other_arg = context->args[j];
-                if (_xo_args_arg_matches_input(other_arg, next_value))
+                if (_xo_args_arg_matches_input(other_arg, next_value, NULL))
                 {
                     // The next argument is a valid arg so don't parse
                     // that as a value of this string array
@@ -1203,7 +1402,7 @@ bool _xo_args_try_parse_arg(xo_args_ctx * const context,
             for (size_t j = 0; j < context->args_size; ++j)
             {
                 xo_args_arg const * const other_arg = context->args[j];
-                if (_xo_args_arg_matches_input(other_arg, next_value))
+                if (_xo_args_arg_matches_input(other_arg, next_value, NULL))
                 {
                     // The next argument is a valid arg so don't parse
                     // that as a value of this string array
@@ -1241,6 +1440,8 @@ bool xo_args_submit(xo_args_ctx * const context)
         return false;
     }
 
+    xo_args_declare_arg(context, "help", "h", XO_ARGS_TYPE_SWITCH);
+
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
         char const * const argv_arg = context->argv[i];
@@ -1266,11 +1467,13 @@ bool xo_args_submit(xo_args_ctx * const context)
             bool parsed_arg = false;
             for (size_t j = 0; j < context->args_size; ++j)
             {
-                if (_xo_args_arg_matches_input(context->args[j], argv_arg))
+                _xo_args_arg_match match;
+                if (_xo_args_arg_matches_input(
+                        context->args[j], argv_arg, &match))
                 {
                     if (false
                         == _xo_args_try_parse_arg(
-                            context, &i, context->args[j]))
+                            context, &i, context->args[j], &match))
                     {
                         _xo_print_try_help(context);
                         return false;
@@ -1422,7 +1625,7 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                            name);
             return NULL;
         }
-        if (NULL != short_name
+        if (NULL != short_name && NULL != existing_arg->short_name
             && strcmp(existing_arg->short_name, short_name) == 0)
         {
             context->print("xo-args error: %s argument short_name conflict."
