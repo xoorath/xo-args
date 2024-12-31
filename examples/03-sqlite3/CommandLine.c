@@ -10,14 +10,15 @@
 char const * _DuplicateString(char const * in)
 {
     size_t const len = strlen(in);
-    char * buff = malloc(len+1);
-    memcpy(buff, in, len+1);
+    char * buff = malloc(len + 1);
+    memcpy(buff, in, len + 1);
     return buff;
 }
 
 char const ** _DuplicateStringArray(char const ** in, size_t count)
 {
-    char const ** newArray = (char const **)malloc(sizeof(char const *) * count);
+    char const ** newArray =
+        (char const **)malloc(sizeof(char const *) * count);
     for (size_t i = 0; i < count; ++i)
     {
         newArray[i] = _DuplicateString(in[i]);
@@ -26,7 +27,8 @@ char const ** _DuplicateStringArray(char const ** in, size_t count)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CommandLine_t * CreateCommandLine(int const argc, char const * const * const argv)
+CommandLine_t * CreateCommandLine(int const argc,
+                                  char const * const * const argv)
 {
     CommandLine_t * cmd = (CommandLine_t *)malloc(sizeof(CommandLine_t));
     memset(cmd, 0, sizeof(CommandLine_t));
@@ -37,127 +39,317 @@ CommandLine_t * CreateCommandLine(int const argc, char const * const * const arg
     // Declare
     //////////////////////////////////////////////////////////////////////////
     xo_args_arg const * const arg_ArchiveArgs =
-        xo_args_declare_arg(ctx, "A", "A", XO_ARGS_TYPE_STRING_ARRAY);
+        xo_args_declare_arg(ctx,
+                            "A",
+                            "A",
+                            "ARGS...",
+                            "run \".archive ARGS\" and exit",
+                            XO_ARGS_TYPE_STRING_ARRAY);
 
     xo_args_arg const * const arg_Append =
-        xo_args_declare_arg(ctx, "append", "append", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "append",
+                            "append",
+                            NULL,
+                            "append the database to the end of the file",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_ASCII =
-        xo_args_declare_arg(ctx, "ascii", "ascii", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "ascii",
+                            "ascii",
+                            NULL,
+                            "set output mode to 'ascii'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Bail =
-        xo_args_declare_arg(ctx, "bail", "bail", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "bail",
+                            "bail",
+                            NULL,
+                            "stop after hitting an error",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_Batch =
-        xo_args_declare_arg(ctx, "batch", "batch", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_Batch = xo_args_declare_arg(
+        ctx, "batch", "batch", NULL, "force batch I/O", XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Box =
-        xo_args_declare_arg(ctx, "box", "box", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "box",
+                            "box",
+                            NULL,
+                            "set output mode to 'box'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Column =
-        xo_args_declare_arg(ctx, "column", "column", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "column",
+                            "column",
+                            NULL,
+                            "set output mode to 'column'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Command =
-        xo_args_declare_arg(ctx, "cmd", "cmd", XO_ARGS_TYPE_STRING);
+        xo_args_declare_arg(ctx,
+                            "cmd",
+                            "cmd",
+                            "COMMAND",
+                            "run \"COMMAND\" before reading stdin",
+                            XO_ARGS_TYPE_STRING);
 
     xo_args_arg const * const arg_CSV =
-        xo_args_declare_arg(ctx, "csv", "csv", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "csv",
+                            "csv",
+                            NULL,
+                            "set output mode to 'csv'",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_Deserialize = xo_args_declare_arg(
-        ctx, "deserialize", "deserialize", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_Deserialize =
+        xo_args_declare_arg(ctx,
+                            "deserialize",
+                            "deserialize",
+                            NULL,
+                            "open the database using sqlite3_deserialize()",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Echo =
-        xo_args_declare_arg(ctx, "echo", "echo", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "echo",
+                            "echo",
+                            NULL,
+                            "print inputs before execution",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_InitFilename =
-        xo_args_declare_arg(ctx, "init", "init", XO_ARGS_TYPE_STRING);
+        xo_args_declare_arg(ctx,
+                            "init",
+                            "init",
+                            "FILENAME",
+                            "read/process named file",
+                            XO_ARGS_TYPE_STRING);
 
-    xo_args_arg const * const arg_Header =
-        xo_args_declare_arg(ctx, "header", "header", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_Header = xo_args_declare_arg(
+        ctx, "header", "header", NULL, "turn headers on", XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_HTML =
-        xo_args_declare_arg(ctx, "html", "html", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "html",
+                            "html",
+                            NULL,
+                            "set output mode to HTML",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_Interactive = xo_args_declare_arg(
-        ctx, "interactive", "interactive", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_Interactive =
+        xo_args_declare_arg(ctx,
+                            "interactive",
+                            "interactive",
+                            NULL,
+                            "force interactive I/O",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_JSON =
-        xo_args_declare_arg(ctx, "json", "json", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "json",
+                            "json",
+                            NULL,
+                            "set output mode to 'json'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Line =
-        xo_args_declare_arg(ctx, "line", "line", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "line",
+                            "line",
+                            NULL,
+                            "set output mode to 'line'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_List =
-        xo_args_declare_arg(ctx, "list", "list", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "list",
+                            "list",
+                            NULL,
+                            "set output mode to 'list'",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_LookAside = xo_args_declare_arg(
-        ctx, "lookaside", "lookaside", XO_ARGS_TYPE_INT_ARRAY);
+    xo_args_arg const * const arg_LookAside =
+        xo_args_declare_arg(ctx,
+                            "lookaside",
+                            "lookaside",
+                            "SIZE N",
+                            "use N entries of SZ bytes for lookaside memory",
+                            XO_ARGS_TYPE_INT_ARRAY);
 
     xo_args_arg const * const arg_Markdown =
-        xo_args_declare_arg(ctx, "markdown", "markdown", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "markdown",
+                            "markdown",
+                            NULL,
+                            "set output mode to 'markdown'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_MaxSize =
-        xo_args_declare_arg(ctx, "maxsize", "maxsize", XO_ARGS_TYPE_INT);
+        xo_args_declare_arg(ctx,
+                            "maxsize",
+                            "maxsize",
+                            "N",
+                            "maximum size for a --deserialize database",
+                            XO_ARGS_TYPE_INT);
 
     xo_args_arg const * const arg_MemTrace =
-        xo_args_declare_arg(ctx, "memtrace", "memtrace", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "memtrace",
+                            "memtrace",
+                            NULL,
+                            "trace all memory allocations and deallocations",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_MMap =
-        xo_args_declare_arg(ctx, "mmap", "mmap", XO_ARGS_TYPE_INT);
+        xo_args_declare_arg(ctx,
+                            "mmap",
+                            "mmap",
+                            "N",
+                            "default mmap size set to N",
+                            XO_ARGS_TYPE_INT);
 
     xo_args_arg const * const arg_NewLine =
-        xo_args_declare_arg(ctx, "newline", "newline", XO_ARGS_TYPE_STRING);
+        xo_args_declare_arg(ctx,
+                            "newline",
+                            "newline",
+                            "SEP",
+                            "set output row separator. Default: '\\n'",
+                            XO_ARGS_TYPE_STRING);
 
     xo_args_arg const * const arg_NoFollow =
-        xo_args_declare_arg(ctx, "nofollow", "nofollow", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "nofollow",
+                            "nofollow",
+                            NULL,
+                            "refuse to open symbolic links to database files",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Nonce =
-        xo_args_declare_arg(ctx, "nonce", "nonce", XO_ARGS_TYPE_STRING);
+        xo_args_declare_arg(ctx,
+                            "nonce",
+                            "nonce",
+                            "STRING",
+                            "set the safe-mode escape nonce",
+                            XO_ARGS_TYPE_STRING);
 
-    xo_args_arg const * const arg_NoRowIDInView = xo_args_declare_arg(
-        ctx, "no-rowid-in-view", "no-rowid-in-view", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_NoRowIDInView =
+        xo_args_declare_arg(ctx,
+                            "no-rowid-in-view",
+                            "no-rowid-in-view",
+                            NULL,
+                            "Disable rowid-in-view using sqlite3_config()",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_NullValue = xo_args_declare_arg(
-        ctx, "nullvalues", "nullvalues", XO_ARGS_TYPE_STRING);
+    xo_args_arg const * const arg_NullValue =
+        xo_args_declare_arg(ctx,
+                            "nullvalue",
+                            "nullvalue",
+                            "TEXT",
+                            "set text string for NULL values. Default ''",
+                            XO_ARGS_TYPE_STRING);
 
     xo_args_arg const * const arg_PageCache = xo_args_declare_arg(
-        ctx, "pagecache", "pagecache", XO_ARGS_TYPE_INT_ARRAY);
+        ctx,
+        "pagecache",
+        "pagecache",
+        "SIZE N",
+        "use N slots of SZ bytes each for page cache memory",
+        XO_ARGS_TYPE_INT_ARRAY);
 
-    xo_args_arg const * const arg_PageCacheTrace = xo_args_declare_arg(
-        ctx, "pcachetrace", "pcachetrace", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_PageCacheTrace =
+        xo_args_declare_arg(ctx,
+                            "pcachetrace",
+                            "pcachetrace",
+                            NULL,
+                            "trace all page cache operations",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Quote =
-        xo_args_declare_arg(ctx, "quote", "quote", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "quote",
+                            "quote",
+                            NULL,
+                            "set output mode to 'quote'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Readonly =
-        xo_args_declare_arg(ctx, "readonly", "readonly", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "readonly",
+                            "readonly",
+                            NULL,
+                            "open the database read-only",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_Safe =
-        xo_args_declare_arg(ctx, "safe", "safe", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_Safe = xo_args_declare_arg(
+        ctx, "safe", "safe", NULL, "enable safe-mode", XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Separator =
-        xo_args_declare_arg(ctx, "separator", "separator", XO_ARGS_TYPE_STRING);
+        xo_args_declare_arg(ctx,
+                            "separator",
+                            "separator",
+                            "SEP",
+                            "set output column separator. Default: '|'",
+                            XO_ARGS_TYPE_STRING);
 
     xo_args_arg const * const arg_Stats =
-        xo_args_declare_arg(ctx, "stats", "stats", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "stats",
+                            "stats",
+                            NULL,
+                            "print memory stats before each finalize",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Table =
-        xo_args_declare_arg(ctx, "table", "table", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "table",
+                            "table",
+                            NULL,
+                            "set output mode to 'table'",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Tabs =
-        xo_args_declare_arg(ctx, "tabs", "tabs", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "tabs",
+                            "tabs",
+                            NULL,
+                            "set output mode to 'tabs'",
+                            XO_ARGS_TYPE_SWITCH);
 
-    xo_args_arg const * const arg_UnsafeTesting = xo_args_declare_arg(
-        ctx, "unsafe-testing", "unsafe-testing", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_UnsafeTesting =
+        xo_args_declare_arg(ctx,
+                            "unsafe-testing",
+                            "unsafe-testing",
+                            NULL,
+                            "allow unsafe commands and modes for testing",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_VFSName =
-        xo_args_declare_arg(ctx, "vfs", "vfs", XO_ARGS_TYPE_STRING);
+        xo_args_declare_arg(ctx,
+                            "vfs",
+                            "vfs",
+                            "NAME",
+                            "use NAME as the default VFS",
+                            XO_ARGS_TYPE_STRING);
 
     xo_args_arg const * const arg_VFSTrace =
-        xo_args_declare_arg(ctx, "vfstrace", "vfstrace", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "vfstrace",
+                            "vfstrace",
+                            NULL,
+                            "enable tracing of all VFS calls",
+                            XO_ARGS_TYPE_SWITCH);
 
     xo_args_arg const * const arg_Zip =
-        xo_args_declare_arg(ctx, "zip", "zip", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(ctx,
+                            "zip",
+                            "zip",
+                            NULL,
+                            "open the file as a ZIP Archive",
+                            XO_ARGS_TYPE_SWITCH);
 
     // Submit
     //////////////////////////////////////////////////////////////////////////
@@ -465,7 +657,7 @@ void DestroyCommandLine(CommandLine_t * const cmd)
         {
             for (size_t i = 0; i < cmd->ArchiveArgsCount; ++i)
             {
-                free((void*)cmd->ArchiveArgs[i]);
+                free((void *)cmd->ArchiveArgs[i]);
             }
             cmd->ArchiveArgsCount = 0;
             free(cmd->ArchiveArgs);
@@ -474,31 +666,31 @@ void DestroyCommandLine(CommandLine_t * const cmd)
 
         if (NULL != cmd->NewLine)
         {
-            free((void*)cmd->NewLine);
+            free((void *)cmd->NewLine);
             cmd->NewLine = NULL;
         }
 
         if (NULL != cmd->Nonce)
         {
-            free((void*)cmd->Nonce);
+            free((void *)cmd->Nonce);
             cmd->Nonce = NULL;
         }
 
         if (NULL != cmd->NullValue)
         {
-            free((void*)cmd->NullValue);
+            free((void *)cmd->NullValue);
             cmd->NullValue = NULL;
         }
 
         if (NULL != cmd->Separator)
         {
-            free((void*)cmd->Separator);
+            free((void *)cmd->Separator);
             cmd->Separator = NULL;
         }
 
         if (NULL != cmd->VFS)
         {
-            free((void*)cmd->VFS);
+            free((void *)cmd->VFS);
             cmd->VFS = NULL;
         }
 

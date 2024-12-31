@@ -190,9 +190,32 @@ extern "C"
     void xo_args_print_help(xo_args_ctx const * const context);
 
     ////////////////////////////////////////////////////////////////////////////////
+    // Declares a program argument with some customization to help in generating
+    // help text.
+    //
+    // context: The xo-args context
+    //
+    // name: The name of this argument. ie: "foo" if the program takes "--foo"
+    // as an argument.
+    //
+    // short_name (optional): An alternate name for this argument. ie: "f" if
+    // the program can take "-f" as an argument. If the short name and name are
+    // the same then the generated help text will show only the short name
+    // syntax.
+    //
+    // value_tip (optional): For arguments that take a value (anything
+    // but switches) this value tip is printed next to the name.
+    // ie: "--foo, -f <integer>". You may wish to fill this out for a more user
+    // friendly input suggestion that just a data type. For example "<file>" or
+    // "[files]" may be more useful to your users than "<text>" or "[text]".
+    //
+    // description (optional): Text to be printed next to the argument in the
+    // help text.
     xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                       char const * const name,
                                       char const * const short_name,
+                                      char const * const value_tip,
+                                      char const * const description,
                                       XO_ARGS_ARG_FLAG const flags);
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -266,11 +289,17 @@ char const g_xo_args_path_separators[2] = "/";
 ////////////////////////////////////////////////////////////////////////////////
 struct xo_args_arg
 {
-    char const * name;
+    char const * name; // ie: "foo"
     size_t name_length;
 
-    char const * short_name;
+    char const * short_name; // ie: "f"
     size_t short_name_length;
+
+    char const * value_tip; // ie: "filename"
+    size_t value_tip_length;
+
+    char const * description; // ie: "loads the foo file"
+    size_t description_length;
 
     // The flags tracked so far.
     XO_ARGS_ARG_FLAG flags;
@@ -645,21 +674,55 @@ void _xo_args_print_arg_help(xo_args_ctx const * const context,
         if ((arg->name_length == arg->short_name_length)
             && (0 == strcmp(arg->name, arg->short_name)))
         {
-            snprintf(
-                left_buffer, sizeof(left_buffer), "  -%s", arg->short_name);
+            if (arg->value_tip_length != 0)
+            {
+                snprintf(left_buffer,
+                         sizeof(left_buffer),
+                         "  -%s %s",
+                         arg->short_name,
+                         arg->value_tip);
+            }
+            else
+            {
+                snprintf(
+                    left_buffer, sizeof(left_buffer), "  -%s", arg->short_name);
+            }
         }
         else
         {
-            snprintf(left_buffer,
-                      sizeof(left_buffer),
-                      "  --%s, -%s",
-                      arg->name,
-                      arg->short_name);
+            if (arg->value_tip_length != 0)
+            {
+                snprintf(left_buffer,
+                         sizeof(left_buffer),
+                         "  --%s, -%s %s",
+                         arg->name,
+                         arg->short_name,
+                         arg->value_tip);
+            }
+            else
+            {
+                snprintf(left_buffer,
+                         sizeof(left_buffer),
+                         "  --%s, -%s",
+                         arg->name,
+                         arg->short_name);
+            }
         }
     }
     else
     {
-        snprintf(left_buffer, sizeof(left_buffer), "  --%s", arg->name);
+        if (arg->value_tip_length != 0)
+        {
+            snprintf(left_buffer,
+                     sizeof(left_buffer),
+                     "  --%s %s",
+                     arg->name,
+                     arg->value_tip);
+        }
+        else
+        {
+            snprintf(left_buffer, sizeof(left_buffer), "  --%s", arg->name);
+        }
     }
 
     size_t const left_buffer_len = strlen(left_buffer);
@@ -668,37 +731,10 @@ void _xo_args_print_arg_help(xo_args_ctx const * const context,
                                          : left_column_width - left_buffer_len;
     context->print("%s%*s", left_buffer, whitespace_needed, "");
 
-    if (arg->flags & XO_ARGS_TYPE_STRING)
+    if (NULL != arg->description)
     {
-        context->print("<text>");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_INT)
-    {
-        context->print("<integer>");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
-    {
-        context->print("<number>");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_BOOL)
-    {
-        context->print("<true|false>");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_STRING_ARRAY)
-    {
-        context->print("[text]");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_INT_ARRAY)
-    {
-        context->print("[integer]");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_DOUBLE_ARRAY)
-    {
-        context->print("[number]");
-    }
-    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
-    {
-        context->print("[true|false]");
+        // todo: wrap after some width
+        context->print(arg->description);
     }
     context->print("\n");
 }
@@ -753,10 +789,12 @@ void xo_args_print_help(xo_args_ctx const * const context)
     for (size_t i = 0; i < context->args_size; ++i)
     {
         xo_args_arg const * const arg = context->args[i];
-        // 6 for an indent of 2 spaces, "--" before the name and a buffer of 2
+        // 8 for an indent of 2 spaces, "--" before the name and a buffer of 4
         // after everything
-        size_t arg_column_space_needed = 6;
+        size_t arg_column_space_needed = 8;
         arg_column_space_needed += arg->name_length;
+        arg_column_space_needed +=
+            (arg->value_tip_length != 0) ? arg->value_tip_length + 1 : 0;
 
         if (NULL != arg->short_name)
         {
@@ -765,8 +803,11 @@ void xo_args_print_help(xo_args_ctx const * const context)
             if ((arg->name_length == arg->short_name_length)
                 && (0 == strcmp(arg->short_name, arg->name)))
             {
-                arg_column_space_needed = 5;
+                arg_column_space_needed = 7;
                 arg_column_space_needed += arg->short_name_length;
+                arg_column_space_needed += (arg->value_tip_length != 0)
+                                               ? arg->value_tip_length + 1
+                                               : 0;
             }
             else
             {
@@ -1544,8 +1585,8 @@ bool xo_args_submit(xo_args_ctx * const context)
         return false;
     }
 
-    xo_args_arg const * const arg_help =
-        xo_args_declare_arg(context, "help", "h", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_help = xo_args_declare_arg(
+        context, "help", "h", NULL, "show this message", XO_ARGS_TYPE_SWITCH);
 
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
@@ -1656,8 +1697,12 @@ void xo_args_destroy_ctx(xo_args_ctx * context)
 xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                   char const * const name,
                                   char const * const short_name,
+                                  char const * const value_tip,
+                                  char const * const description,
                                   XO_ARGS_ARG_FLAG const flags)
 {
+    (void)value_tip;
+    (void)description;
     if (NULL == context)
     {
         XO_ARGS_ASSERT(NULL != context, "xo_args_ctx must not be null here.");
@@ -1816,6 +1861,77 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     {
         arg->short_name = NULL;
         arg->short_name_length = 0;
+    }
+
+    if (NULL != description)
+    {
+        size_t const description_length = strlen(description);
+        char * const buff =
+            (char *)_xo_args_tracked_alloc(context, description_length + 1);
+        memcpy(buff, description, description_length + 1);
+        arg->description = buff;
+        arg->description_length = description_length;
+    }
+    else
+    {
+        arg->description = NULL;
+        arg->description_length = 0;
+    }
+
+    if (NULL != value_tip)
+    {
+        size_t const value_tip_length = strlen(value_tip);
+        char * const buff =
+            (char *)_xo_args_tracked_alloc(context, value_tip_length + 1);
+        memcpy(buff, value_tip, value_tip_length + 1);
+        arg->value_tip = buff;
+        arg->value_tip_length = value_tip_length;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_STRING)
+    {
+        arg->value_tip = "<text>";
+        arg->value_tip_length = 6;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_INT)
+    {
+        arg->value_tip = "<integer>";
+        arg->value_tip_length = 9;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
+    {
+        arg->value_tip = "<number>";
+        arg->value_tip_length = 8;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_BOOL)
+    {
+        arg->value_tip = "<true|false>";
+        arg->value_tip_length = 12;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_STRING_ARRAY)
+    {
+        arg->value_tip = "[text]";
+        arg->value_tip_length = 6;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_INT_ARRAY)
+    {
+        arg->value_tip = "[integer]";
+        arg->value_tip_length = 9;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_DOUBLE_ARRAY)
+    {
+        arg->value_tip = "[number]";
+        arg->value_tip_length = 8;
+    }
+    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
+    {
+        arg->value_tip = "[true|false]";
+        arg->value_tip_length = 12;
+    }
+    else
+    {
+        // Switches don't get a tip because they don't have a value that follows
+        arg->value_tip = NULL;
+        arg->value_tip_length = 0;
     }
 
     arg->has_value = false;

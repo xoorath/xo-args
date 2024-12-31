@@ -27,13 +27,25 @@ class CommandLineImpl
             ctx,
             "message",
             "m",
+            "MSG",
+            "a message to print to stdout some number of times (see: --repeat)",
             (XO_ARGS_ARG_FLAG)(XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED));
 
-        xo_args_arg const * const argRepeat = xo_args_declare_arg(
-            ctx, "repeat", "r", (XO_ARGS_ARG_FLAG)XO_ARGS_TYPE_INT);
+        xo_args_arg const * const argRepeat =
+            xo_args_declare_arg(ctx,
+                                "repeat",
+                                "r",
+                                "COUNT",
+                                "the number of times to print the message",
+                                (XO_ARGS_ARG_FLAG)XO_ARGS_TYPE_INT);
 
-        xo_args_arg const * const argVerbose = xo_args_declare_arg(
-            ctx, "verbose", "V", (XO_ARGS_ARG_FLAG)XO_ARGS_TYPE_SWITCH);
+        xo_args_arg const * const argVerbose =
+            xo_args_declare_arg(ctx,
+                                "verbose",
+                                "V",
+                                NULL,
+                                "print additional info",
+                                (XO_ARGS_ARG_FLAG)XO_ARGS_TYPE_SWITCH);
 
         if (!xo_args_submit(ctx))
         {

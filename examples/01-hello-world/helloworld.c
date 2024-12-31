@@ -30,18 +30,30 @@ int main(int argc, char ** argv)
     // declaration
     //////////////////////////////////////////////////////////////////////////
 
-    xo_args_arg const * const arg_message = xo_args_declare_arg(
-        args_ctx,  // xo-args context
-        "message", // argument name (ie: "--message")
-        "m",       // [optional] argument short name (ie: "-m")
-        XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED // [optional] flags
-    );
+    xo_args_arg const * const arg_message =
+        xo_args_declare_arg(args_ctx,
+                            "message",
+                            "m",
+                            "MSG",
+                            "a message to print to stdout some number of times "
+                            "(see: --repeat)",
+                            XO_ARGS_TYPE_STRING | XO_ARGS_ARG_REQUIRED);
 
     xo_args_arg const * const arg_repeat =
-        xo_args_declare_arg(args_ctx, "repeat", "r", XO_ARGS_TYPE_INT);
+        xo_args_declare_arg(args_ctx,
+                            "repeat",
+                            "r",
+                            "COUNT",
+                            "the number of times to print the message",
+                            XO_ARGS_TYPE_INT);
 
     xo_args_arg const * const arg_verbose =
-        xo_args_declare_arg(args_ctx, "verbose", "V", XO_ARGS_TYPE_SWITCH);
+        xo_args_declare_arg(args_ctx,
+                            "verbose",
+                            "V",
+                            NULL,
+                            "print additional info",
+                            XO_ARGS_TYPE_SWITCH);
 
     // Submit returning false means there was some error such as bad user input
     if (!xo_args_submit(args_ctx))
