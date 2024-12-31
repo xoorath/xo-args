@@ -266,9 +266,11 @@ char const g_xo_args_path_separators[2] = "/";
 ////////////////////////////////////////////////////////////////////////////////
 struct xo_args_arg
 {
-
     char const * name;
+    size_t name_length;
+
     char const * short_name;
+    size_t short_name_length;
 
     // The flags tracked so far.
     XO_ARGS_ARG_FLAG flags;
@@ -309,8 +311,13 @@ struct xo_args_ctx
     xo_args_free_fn free;
     xo_args_print_fn print;
     char const * app_name;
+    size_t app_name_length;
+
     char const * app_version;
+    size_t app_version_length;
+
     char const * app_documentation;
+    size_t app_documentation_length;
 
     // A list of all allocations to free later in xo_args_cleanup
     void ** allocations;
@@ -364,55 +371,53 @@ bool _xo_args_arg_matches_input(xo_args_arg const * const arg,
     }
     if ('-' == str[0])
     {
-        size_t const arg_name_len = strlen(arg->name);
         if ((str_len > 2) && ('-' == str[1])
-            && (0 == strncmp(&str[2], arg->name, arg_name_len)))
+            && (0 == strncmp(&str[2], arg->name, arg->name_length)))
         {
-            if (str_len - 2 == arg_name_len)
+            if (str_len - 2 == arg->name_length)
             {
                 if (NULL != out_match)
                 {
                     out_match->match_type = _XO_ARGS_ARG_MATCH_TYPE_NAME;
                     out_match->matched_name = arg->name;
-                    out_match->matched_name_length = arg_name_len;
+                    out_match->matched_name_length = arg->name_length;
                 }
                 return true;
             }
-            if ('=' == str[arg_name_len + 2])
+            if ('=' == str[arg->name_length + 2])
             {
                 if (NULL != out_match)
                 {
                     out_match->match_type = _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_NAME;
                     out_match->matched_name = arg->name;
-                    out_match->matched_name_length = arg_name_len;
+                    out_match->matched_name_length = arg->name_length;
                 }
                 return true;
             }
             return false;
         }
-        size_t const arg_short_name_len =
-            (NULL == arg->short_name) ? 0 : strlen(arg->short_name);
+
         if ((NULL != arg->short_name)
-            && (0 == strncmp(&str[1], arg->short_name, arg_short_name_len)))
+            && (0 == strncmp(&str[1], arg->short_name, arg->short_name_length)))
         {
-            if (str_len - 1 == arg_short_name_len)
+            if (str_len - 1 == arg->short_name_length)
             {
                 if (NULL != out_match)
                 {
                     out_match->match_type = _XO_ARGS_ARG_MATCH_TYPE_SHORT_NAME;
                     out_match->matched_name = arg->short_name;
-                    out_match->matched_name_length = arg_short_name_len;
+                    out_match->matched_name_length = arg->short_name_length;
                 }
                 return true;
             }
-            if ('=' == str[arg_short_name_len + 1])
+            if ('=' == str[arg->short_name_length + 1])
             {
                 if (NULL != out_match)
                 {
                     out_match->match_type =
                         _XO_ARGS_ARG_MATCH_TYPE_ASSIGN_SHORT_NAME;
                     out_match->matched_name = arg->short_name;
-                    out_match->matched_name_length = arg_short_name_len;
+                    out_match->matched_name_length = arg->short_name_length;
                 }
                 return true;
             }
@@ -450,6 +455,7 @@ void * _xo_args_tracked_realloc(xo_args_ctx * const context,
             return context->allocations[i];
         }
     }
+    XO_ARGS_ASSERT(false, "Failed to find allocation for realloc");
     return NULL;
 }
 
@@ -603,7 +609,7 @@ char const * _xo_args_basename(xo_args_ctx * const context,
 bool _xo_isalnum(char const c)
 {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-           || (c >= '0' && c <= '9');
+           || (c >= '0' && c <= '9') || (c == '-');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -626,6 +632,75 @@ bool _xo_isalnum_str(char const * const start, char const * const end)
 void _xo_print_try_help(xo_args_ctx const * const context)
 {
     context->print("Try: %s --help\n", context->app_name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void _xo_args_print_arg_help(xo_args_ctx const * const context,
+                             xo_args_arg const * const arg,
+                             size_t const left_column_width)
+{
+    char left_buffer[128] = {0};
+    if (arg->short_name != NULL)
+    {
+        if ((arg->name_length == arg->short_name_length)
+            && (0 == strcmp(arg->name, arg->short_name)))
+        {
+            snprintf(
+                left_buffer, sizeof(left_buffer), "  -%s", arg->short_name);
+        }
+        else
+        {
+            snprintf(left_buffer,
+                      sizeof(left_buffer),
+                      "  --%s, -%s",
+                      arg->name,
+                      arg->short_name);
+        }
+    }
+    else
+    {
+        snprintf(left_buffer, sizeof(left_buffer), "  --%s", arg->name);
+    }
+
+    size_t const left_buffer_len = strlen(left_buffer);
+    size_t const whitespace_needed = left_buffer_len > left_column_width
+                                         ? 0
+                                         : left_column_width - left_buffer_len;
+    context->print("%s%*s", left_buffer, whitespace_needed, "");
+
+    if (arg->flags & XO_ARGS_TYPE_STRING)
+    {
+        context->print("<text>");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_INT)
+    {
+        context->print("<integer>");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
+    {
+        context->print("<number>");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_BOOL)
+    {
+        context->print("<true|false>");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_STRING_ARRAY)
+    {
+        context->print("[text]");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_INT_ARRAY)
+    {
+        context->print("[integer]");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_DOUBLE_ARRAY)
+    {
+        context->print("[number]");
+    }
+    else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
+    {
+        context->print("[true|false]");
+    }
+    context->print("\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -674,42 +749,64 @@ void xo_args_print_help(xo_args_ctx const * const context)
         context->print("DOCUMENTATION\n%s\n", context->app_documentation);
     }
 
+    size_t left_column_width = 0;
+    for (size_t i = 0; i < context->args_size; ++i)
+    {
+        xo_args_arg const * const arg = context->args[i];
+        // 6 for an indent of 2 spaces, "--" before the name and a buffer of 2
+        // after everything
+        size_t arg_column_space_needed = 6;
+        arg_column_space_needed += arg->name_length;
+
+        if (NULL != arg->short_name)
+        {
+            // As a special case if the name and short name are the same:
+            // we just print the short name.
+            if ((arg->name_length == arg->short_name_length)
+                && (0 == strcmp(arg->short_name, arg->name)))
+            {
+                arg_column_space_needed = 5;
+                arg_column_space_needed += arg->short_name_length;
+            }
+            else
+            {
+                // 2 for ", " between the name and short name
+                arg_column_space_needed += 2 + arg->short_name_length;
+            }
+        }
+        left_column_width = (left_column_width < arg_column_space_needed)
+                                ? arg_column_space_needed
+                                : left_column_width;
+    }
+
     if (any_required)
     {
+        if (any_optional)
+        {
+            context->print("REQUIRED ARGUMENTS:\n");
+        }
         for (size_t i = 0; i < context->args_size; ++i)
         {
             xo_args_arg const * const arg = context->args[i];
             if (arg->flags & XO_ARGS_ARG_REQUIRED)
             {
-                if (arg->short_name != NULL)
-                {
-                    printf("\t-%s, --%s\n", arg->short_name, arg->name);
-                }
-                else
-                {
-                    printf("\t--%s\n", arg->name);
-                }
+                _xo_args_print_arg_help(context, arg, left_column_width);
+            }
+        }
+    }
 
-                if (arg->flags & XO_ARGS_TYPE_STRING)
-                {
-                    printf("\t\tstring\n");
-                }
-                else if (arg->flags & XO_ARGS_TYPE_INT)
-                {
-                    printf("\t\tinteger\n");
-                }
-                else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
-                {
-                    printf("\t\tdouble\n");
-                }
-                else if (arg->flags & XO_ARGS_TYPE_BOOL)
-                {
-                    printf("\t\ttrue|false\n");
-                }
-                else if (arg->flags & XO_ARGS_TYPE_SWITCH)
-                {
-                    printf("\t\tenables this switch\n");
-                }
+    if (any_optional)
+    {
+        if (any_required)
+        {
+            context->print("OPTIONAL ARGUMENTS:\n");
+        }
+        for (size_t i = 0; i < context->args_size; ++i)
+        {
+            xo_args_arg const * const arg = context->args[i];
+            if (XO_ARGS_ARG_REQUIRED != (arg->flags & XO_ARGS_ARG_REQUIRED))
+            {
+                _xo_args_print_arg_help(context, arg, left_column_width);
             }
         }
     }
@@ -793,6 +890,8 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
             // We never free app_name directly so this assignment is safe
             context->app_name = "app";
         }
+
+        context->app_name_length = strlen(context->app_name);
     }
     else
     {
@@ -800,6 +899,7 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
         char * buff = (char *)_xo_args_tracked_alloc(context, len + 1);
         memcpy(buff, app_name, len + 1);
         context->app_name = buff;
+        context->app_name_length = len;
     }
 
     if (NULL == app_version)
@@ -807,6 +907,7 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
         // A NULL app_version is supported. We just won't print the version in
         // the help text.
         context->app_version = NULL;
+        context->app_version_length = 0;
     }
     else
     {
@@ -814,6 +915,7 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
         char * buff = (char *)_xo_args_tracked_alloc(context, len + 1);
         memcpy(buff, app_version, len + 1);
         context->app_version = buff;
+        context->app_version_length = 0;
     }
 
     if (NULL == app_documentation)
@@ -821,6 +923,7 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
         // NULL app_documentation is supported. We just won't print the
         // documentation in the help text.
         context->app_documentation = NULL;
+        context->app_documentation_length = 0;
     }
     else
     {
@@ -828,12 +931,13 @@ xo_args_ctx * xo_args_create_ctx_advanced(xo_argc_t const argc,
         char * buff = (char *)_xo_args_tracked_alloc(context, len + 1);
         memcpy(buff, app_documentation, len + 1);
         context->app_documentation = buff;
+        context->app_documentation_length = 0;
     }
 
     context->args_size = 0;
     context->args_reserved = 4;
-    context->args = (xo_args_arg **)context->alloc(context->args_reserved
-                                                   * sizeof(xo_args_arg *));
+    context->args = (xo_args_arg **)_xo_args_tracked_alloc(
+        context, context->args_reserved * sizeof(xo_args_arg *));
 
     return context;
 }
@@ -881,14 +985,14 @@ bool _xo_args_try_parse_int(char const * const input, int64_t * out_int)
 ////////////////////////////////////////////////////////////////////////////////
 bool _xo_args_try_parse_bool(char const * const input, bool * out_bool)
 {
-    if (0 == strcmp(input, "0") || 0 == strcmp(input, "false")
-        || 0 == strcmp(input, "False") || 0 == strcmp(input, "FALSE"))
+    if ((0 == strcmp(input, "0")) || (0 == strcmp(input, "false"))
+        || (0 == strcmp(input, "False")) || (0 == strcmp(input, "FALSE")))
     {
         *out_bool = false;
         return true;
     }
-    else if (0 == strcmp(input, "1") || 0 == strcmp(input, "true")
-             || 0 == strcmp(input, "True") || 0 == strcmp(input, "TRUE"))
+    else if ((0 == strcmp(input, "1")) || (0 == strcmp(input, "true"))
+             || (0 == strcmp(input, "True")) || (0 == strcmp(input, "TRUE")))
     {
         *out_bool = true;
         return true;
@@ -1440,7 +1544,8 @@ bool xo_args_submit(xo_args_ctx * const context)
         return false;
     }
 
-    xo_args_declare_arg(context, "help", "h", XO_ARGS_TYPE_SWITCH);
+    xo_args_arg const * const arg_help =
+        xo_args_declare_arg(context, "help", "h", XO_ARGS_TYPE_SWITCH);
 
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
@@ -1518,6 +1623,13 @@ bool xo_args_submit(xo_args_ctx * const context)
         }
     }
 
+    bool help = false;
+    if (xo_args_try_get_bool(arg_help, &help) && true == help)
+    {
+        xo_args_print_help(context);
+        return false;
+    }
+
     return true;
 }
 
@@ -1537,7 +1649,6 @@ void xo_args_destroy_ctx(xo_args_ctx * context)
         context->free(context->allocations[i]);
     }
     context->free(context->allocations);
-    context->free(context->args);
     context->free(context);
 }
 
@@ -1617,7 +1728,8 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     for (size_t i = 0; i < context->args_size; ++i)
     {
         xo_args_arg * const existing_arg = context->args[i];
-        if (strcmp(existing_arg->name, name) == 0)
+        if ((name_len == existing_arg->name_length)
+            && (0 == strcmp(existing_arg->name, name)))
         {
             context->print("xo-args error: %s argument name conflict. name:"
                            " %s\n",
@@ -1625,8 +1737,9 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                            name);
             return NULL;
         }
-        if (NULL != short_name && NULL != existing_arg->short_name
-            && strcmp(existing_arg->short_name, short_name) == 0)
+        if ((NULL != short_name) && (NULL != existing_arg->short_name)
+            && (short_name_len == existing_arg->short_name_length)
+            && (0 == strcmp(existing_arg->short_name, short_name)))
         {
             context->print("xo-args error: %s argument short_name conflict."
                            " short_name: %s\n",
@@ -1688,6 +1801,7 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
             (char *)_xo_args_tracked_alloc(context, name_len + 1);
         memcpy(buff, name, name_len + 1);
         arg->name = buff;
+        arg->name_length = name_len;
     }
 
     if (NULL != short_name)
@@ -1696,10 +1810,12 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
             (char *)_xo_args_tracked_alloc(context, short_name_len + 1);
         memcpy(buff, short_name, short_name_len + 1);
         arg->short_name = buff;
+        arg->short_name_length = short_name_len;
     }
     else
     {
         arg->short_name = NULL;
+        arg->short_name_length = 0;
     }
 
     arg->has_value = false;

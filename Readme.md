@@ -55,9 +55,11 @@ int main(int argc, char** argv)
 
 # Examples
 
-* [example1.c](./examples/example1/example1.c): Basic usage
-* [example2.c](./examples/example2/example2.c): Demonstrates memory allocations
-* [example3.c](./examples/example3/example3.cpp): C++ demo
+* [01-hello-world](./examples/01-hello-world/): A basic example in C.
+* [02-cpp](./examples/02-cpp/): A C++ example where xo-args is 
+encapsulated.
+* [03-sqlite3](./examples/03-sqlite3/): A complex example in C that 
+re-creates the many arguments of sqlite3
 
 # Contributing
 
