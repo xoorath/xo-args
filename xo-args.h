@@ -793,12 +793,12 @@ void xo_args_print_help(xo_args_ctx const * const context)
 
     if (any_optional)
     {
-        context->print(" [OPTION]...\n");
+        context->print(" [OPTIONS]...\n");
     }
 
     if (NULL != context->app_documentation)
     {
-        context->print("DOCUMENTATION\n%s\n", context->app_documentation);
+        context->print("%s\n", context->app_documentation);
     }
 
     size_t left_column_width = 0;
@@ -1940,43 +1940,43 @@ xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
     }
     else if (arg->flags & XO_ARGS_TYPE_STRING)
     {
-        arg->value_tip = "<text>";
-        arg->value_tip_length = 6;
+        arg->value_tip = "TEXT";
+        arg->value_tip_length = 4;
     }
     else if (arg->flags & XO_ARGS_TYPE_INT)
     {
-        arg->value_tip = "<integer>";
-        arg->value_tip_length = 9;
+        arg->value_tip = "INTEGER";
+        arg->value_tip_length = 7;
     }
     else if (arg->flags & XO_ARGS_TYPE_DOUBLE)
     {
-        arg->value_tip = "<number>";
-        arg->value_tip_length = 8;
+        arg->value_tip = "NUMBER";
+        arg->value_tip_length = 6;
     }
     else if (arg->flags & XO_ARGS_TYPE_BOOL)
     {
-        arg->value_tip = "<true|false>";
-        arg->value_tip_length = 12;
+        arg->value_tip = "TRUE|FALSE";
+        arg->value_tip_length = 10;
     }
     else if (arg->flags & XO_ARGS_TYPE_STRING_ARRAY)
     {
-        arg->value_tip = "[text]";
-        arg->value_tip_length = 6;
+        arg->value_tip = "[TEXT]...";
+        arg->value_tip_length = 9;
     }
     else if (arg->flags & XO_ARGS_TYPE_INT_ARRAY)
     {
-        arg->value_tip = "[integer]";
-        arg->value_tip_length = 9;
+        arg->value_tip = "[INTEGER]...";
+        arg->value_tip_length = 12;
     }
     else if (arg->flags & XO_ARGS_TYPE_DOUBLE_ARRAY)
     {
-        arg->value_tip = "[number]";
-        arg->value_tip_length = 8;
+        arg->value_tip = "[NUMBER]...";
+        arg->value_tip_length = 11;
     }
     else if (arg->flags & XO_ARGS_TYPE_BOOL_ARRAY)
     {
-        arg->value_tip = "[true|false]";
-        arg->value_tip_length = 12;
+        arg->value_tip = "[TRUE|FALSE]...";
+        arg->value_tip_length = 15;
     }
     else
     {

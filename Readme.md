@@ -84,6 +84,24 @@ int main(int const argc, char const * const * const argv)
 }
 ```
 
+```sh
+# Prints "Hello world!" 5 times.
+./quick-start --message "Hello world!" --repeat 5
+
+# Prints "Hello world!" 5 times.
+./quick-start -m "Hello world!" -r 5
+
+# Prints "Hello World!" 10 times.
+./quick-start --message "Hello world!"
+
+# This invocation is invalid because --message is required.
+# The user will be instructed to try running with --help.
+./quick-start --repeat 5
+
+# Prints the generated help text
+./quick-start --help
+```
+
 # Examples
 
 * [01-hello-world](./examples/01-hello-world/): A basic example in C.

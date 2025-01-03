@@ -34,7 +34,16 @@ CommandLine_t * CreateCommandLine(int const argc,
     memset(cmd, 0, sizeof(CommandLine_t));
 
     xo_args_ctx * const ctx = xo_args_create_ctx_advanced(
-        argc, argv, "sqlite3", "1.0.0", NULL, NULL, NULL, NULL, NULL);
+        argc,
+        argv,
+        "sqlite3",
+        "1.0.0",
+        "FILENAME is the name of an SQLite database. A new database is created "
+        "if the file does not previously exist. Defaults to :memory:.",
+        NULL,
+        NULL,
+        NULL,
+        NULL);
 
     // Declare
     //////////////////////////////////////////////////////////////////////////
