@@ -13,7 +13,7 @@ typedef struct CommandLine_s
     size_t ArchiveArgsCount;
 
     bool Append;
-    OutputType_t OutputType;
+    OutputMode_t OutputMode;
     bool Bail;
     bool Batch;
     char const * Command;

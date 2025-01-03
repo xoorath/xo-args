@@ -37,7 +37,7 @@ int main(int argc, char const * const * argv)
         argv = (char const * const *)mock_argv;
     }
 
-    CommandLine_t * const cmd = CreateCommandLine(argc, argv);
+    CommandLine_t const * const cmd = CreateCommandLine(argc, argv);
     if (NULL == cmd)
     {
 #if defined(_MSC_VER)
@@ -55,45 +55,45 @@ int main(int argc, char const * const * argv)
         printf("ArchiveArgs[%zu] = \"%s\"\n", i, cmd->ArchiveArgs[i]);
     }
     printf("Append = %s\n", cmd->Append ? "true" : "false");
-    switch (cmd->OutputType)
+    switch (cmd->OutputMode)
     {
-    case OutputType_Default:
+    case OutputMode_Default:
         puts("OutputType = Default");
         break;
-    case OutputType_ASCII:
+    case OutputMode_ASCII:
         puts("OutputType = ASCII");
         break;
-    case OutputType_Box:
+    case OutputMode_Box:
         puts("OutputType = Box");
         break;
-    case OutputType_Column:
+    case OutputMode_Column:
         puts("OutputType = Column");
         break;
-    case OutputType_CSV:
+    case OutputMode_CSV:
         puts("OutputType = CSV");
         break;
-    case OutputType_HTML:
+    case OutputMode_HTML:
         puts("OutputType = HTML");
         break;
-    case OutputType_JSON:
+    case OutputMode_JSON:
         puts("OutputType = JSON");
         break;
-    case OutputType_Line:
+    case OutputMode_Line:
         puts("OutputType = Line");
         break;
-    case OutputType_List:
+    case OutputMode_List:
         puts("OutputType = List");
         break;
-    case OutputType_Markdown:
+    case OutputMode_Markdown:
         puts("OutputType = Markdown");
         break;
-    case OutputType_Quote:
+    case OutputMode_Quote:
         puts("OutputType = Quote");
         break;
-    case OutputType_Table:
+    case OutputMode_Table:
         puts("OutputType = Table");
         break;
-    case OutputType_Tabs:
+    case OutputMode_Tabs:
         puts("OutputType = Tabs");
         break;
     default:
@@ -131,7 +131,7 @@ int main(int argc, char const * const * argv)
     printf("VFSTrace = %s\n", cmd->VFSTrace ? "true" : "false");
     printf("Zip = %s\n", cmd->Zip ? "true" : "false");
 
-    DestroyCommandLine(cmd);
+    DestroyCommandLine((CommandLine_t *)cmd);
 #if defined(_MSC_VER)
     if (IsDebuggerPresent())
     {

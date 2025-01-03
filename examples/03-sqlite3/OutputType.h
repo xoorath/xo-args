@@ -1,19 +1,19 @@
 #pragma once
 
-typedef enum OutputType_e
+typedef enum OutputMode_e
 {
-    OutputType_Default = 0,
+    OutputMode_Default = 0,
 
-    OutputType_ASCII = 1 << 0,
-    OutputType_Box = 1 << 1,
-    OutputType_Column = 1 << 2,
-    OutputType_CSV = 1 << 3,
-    OutputType_HTML = 1 << 4,
-    OutputType_JSON = 1 << 5,
-    OutputType_Line = 1 << 6,
-    OutputType_List = 1 << 7,
-    OutputType_Markdown = 1 << 8,
-    OutputType_Quote = 1 << 9,
-    OutputType_Table = 1 << 10,
-    OutputType_Tabs = 1 << 11
-} OutputType_t;
+    OutputMode_ASCII = 1 << 0,
+    OutputMode_Box = 1 << 1,
+    OutputMode_Column = 1 << 2,
+    OutputMode_CSV = 1 << 3,
+    OutputMode_HTML = 1 << 4,
+    OutputMode_JSON = 1 << 5,
+    OutputMode_Line = 1 << 6,
+    OutputMode_List = 1 << 7,
+    OutputMode_Markdown = 1 << 8,
+    OutputMode_Quote = 1 << 9,
+    OutputMode_Table = 1 << 10,
+    OutputMode_Tabs = 1 << 11
+} OutputMode_t;

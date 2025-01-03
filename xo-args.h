@@ -1,105 +1,87 @@
 ////////////////////////////////////////////////////////////////////////////////
-// xo-args.h
+// xo-args.h - pre-release - public domain
+// authored from 2024-2025 by Jared Thomson
 //
-// xo-args.h is a single header file library for C and C++ designed to help
-// process command line arguments in a way that's reasonably consistent with
-// popular standards.
-// See: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html
-// See: https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
+// xo-args provides a way to declare named arguments for a program's argv
+// in a portable manner with a syntax that will be familiar to many users.
+// xo-args allows for typed arguments, arrays of values, and will generate help
+// text. It is designed to work with C99 or C++98 or newer.
 //
-// Author:              Jared Thomson
-// Project homepage:    https://git.merveilles.town/xo/xo-args
-// License File:        See License.md
-// License URL:         https://creativecommons.org/publicdomain/zero/1.0/
-////////////////////////////////////////////////////////////////////////////////
-// The anatomy of command line arguments (examples):
+// LICENSE
 //
-// > program.exe --foo FOO -b BAR -z
-//      argv[0] "program.exe"
-//      argv[1] "--foo" This begins variable parsing. Any short name would be
-//              valid here as well such as "-f"
-//      argv[2] "FOO" This is the value for the foo variable. In this example
-//              we're assuming foo has the type of string.
-//      argv[3] "-b" This begins variable parsing. Any standard name would be
-//              valid here as well such as "--bar"
-//      argv[4] "BAR" This is the value for the variable with a short name 'b'.
-//              In this example we're assuming that variable has the type
-//              string.
-//      argv[5] "-z" Denotes a switch. A switch is a boolean argument that is
-//              false if it is not present, otherwise the value is true. The
-//              user does not provide a separate value such as ['-z', 'true'].
+//  See the end of file for license information.
 //
-// > program.exe --foo
-//      argv[0] "program.exe"
-//      argv[1] "--foo" if we assume foo has a string type like the last
-//              example then this would be an error. All arguments defined
-//              should be followed by a value unless it's a switch.
+// MAIN FEATURES
 //
-// > program.exe --foo FOO --foo FOO
-//      argv[0] "program.exe"
-//      argv[1] "--foo" This begins variable parsing for foo.
-//      argv[2] "FOO" This is the value for foo
-//      argv[3] "--foo" This would produce an error. Only arrays may have
-//              values defined multiple times. Because foo is a string in our
-//              examples here this would be a re-definition error.
-//      argv[4] "FOO" This is irrelevant because of the error at argv[3].
-////////////////////////////////////////////////////////////////////////////////
-// Quick start guide:
+//      1. Parsing of arguments with error checking for the following types:
+//         string, integer, double, and boolean. There is also an array type
+//         for each of these data types.
+//      2. Switches are special arguments with no value. A switch is a boolean
+//         that is implicitly false and becomes true when present.
+//      3. Each argument has a name and optionally a short-name. This let's
+//         users set variables with two syntaxes: --name and -n.
+//      4. Help text is generated for the program based on the initial setup of
+//         the xo-args context and the declaration of each argument. This help
+//         text can be accessed by users with '--help' or '-h' on the command
+//         line.
+//      5. xo-args can be configured with a custom print function and allocator.
 //
-// 1. In a single translation unit (C or C++ file) define XO_ARGS_IMPL and
-// include xo-args.h.
-//      #define XO_ARGS_IMPL // only do this in one c or cpp file
-//      #include "xo-args.h"
+// USAGE
 //
-// 2. Setup an xo-args context in your entry point and define any arguments.
-//      xo_args_ctx * ctx = xo_args_create_ctx(argc, argv);
-//      xo_args_arg * foo = xo_args_define_arg("foo", "f", XO_ARGS_TYPE_BOOL);
+//  Include this file in whatever places need to refer to it. In ONE C/C++ file,
+//  write:
+//      #define XO_ARGS_IMPL
+//  before the #include of this file. This expands out the actual implementation
+//  into that C/C++ file.
 //
-// 3. Conclude setup and check to see if the program arguments were valid based
-// on your earlier definition. If the arguments aren't valid you can exit the
-// program with an error code. Don't forget to destroy the context before you
-// quit for a clean exit without memory leaks.
-//      if (false == xo_args_end_init(ctx))
-//      {
-//          xo_args_destroy_ctx(ctx);
-//          return -1;
-//      }
+//  Creating a context:
+//      To use xo-args, you must create a context, declare arguments using that
+//      context, submit the arguments when finished, and destroy the context
+//      when it is no longer needed. The necessary functions are:
+//      all of that:
+//          xo_args_create_ctx          -- Creates the context
+//          xo_args_create_ctx_advanced -- A more feature-rich alternative to
+//                                         xo_args_create_ctx
+//          xo_args_declare_arg         -- Declares an argument
+//          xo_args_submit              -- Begins argument parsing
+//          xo_args_destroy_ctx         -- Cleans up the context
 //
-//  4. After you've concluded the setup with xo_args_end_init, if it returned
-// true you are free to start using your arguments and destroy the context
-// whenever you're done. Once the context is destroyed all of the args you
-// defined earlier will be destroyed as well.
-//      char* foo_value;
-//      if (xo_args_try_get_string(foo, &foo_value))
-//      {
-//          printf("foo value: %s\n", foo_value);
-//      }
-//      // ... the rest of the program
-//      xo_args_destroy_ctx(ctx); // foo and ctx are now both freed
-////////////////////////////////////////////////////////////////////////////////
-// Implementation notes:
+//  Declaring arguments:
+//      Every argument must have a name. That name is specified by users on the
+//      command line with two dashes (example: if the name is "key-name", users
+//      will type "--key-name"). A short name is optional and can be specified
+//      by users with a single dash (example: if the short name is "k", users
+//      will type "-k"). All names are case sensitive, and there us nothing
+//      preventing you from using the same string for a name and short-name.
+//      Names and short-names must not conflict with existing arguments.
 //
-// xo-args expects the lifetime of argv to be longer than the usage of the
-// context. Other strings such as the program name, version, documentation,
-// argument names and short names are not expected to have any particular
-// lifetime and are copied. All memory allocated by xo-args is tracked by the
-// context and freed when the user calls xo_args_destroy_ctx.
+//      A value tip and description are used only for generating help text,
+//      helping users understand what to expect from a given argument.
 //
-// An argument name is not optional but short names are optional. There is no
-// enforcement of how long or short a name or short name can or should be.
-// Switches are an exception to this rule: a name is not required so long as a
-// short name is provided.
+//      Arguments are optional by default. Use the XO_ARGS_ARG_REQUIRED flag to
+//      indicate than an argument is required.
 //
-// There is no chaining of switches. For example -abc is not equivalent to
-// -a -b -c.
+//  Data types:
+//      xo-args supports strings, integers, doubles and booleans. There are also
+//      array types for each of those data types. The integer type is backed by
+//      int64_t with all the limitations that implies; similarly, doubles are
+//      backed by the double type.
 //
-// Arrays can be defined two ways: by setting a variable multiple times or by
-// values continuously until a valid argument is encountered. For example:
-// [-foo 1 -foo 2 -foo 3 --bar BAR] will have an array named foo contain the
-// values 1, 2 and 3 as well as a variable bar with a value of BAR.
-// [-foo 1 2 3 --bar BAR] is equivalent. If there was no variable named bar
-// declared then foo would have the values: 1, 2, 3, --bar, BAR.
+//  User experience:
+//      Suppose you declare an application 'foo.exe' that takes a "verbose"/"V"
+//      switch, a double "timeout"/"t", a string array "input"/"i" and a string
+//      "output"/"o". Here are examples of how the program could be invoked:
 //
+//          foo.exe --input input1.txt input2.txt --output out.txt -V -t=10.0
+//          foo.exe -i input1.txt input2.txt -o out.txt --timeout 10
+//          foo.exe -i input1.txt -i input2.txt -o out.txt --timeout infinity
+//          foo.exe -i input1.txt --verbose -o out.txt --input input2.txt -t 10
+//
+// IMPLEMENTATION NOTES
+//
+//      xo-args is developed in a manner similar to other single-header
+//      libraries and directly references and copies style notes from
+//      Sean Barrett's stb project: https://github.com/nothings/stb
 ////////////////////////////////////////////////////////////////////////////////
 #if !defined(__XO_ARGS_H__)
 #define __XO_ARGS_H__
@@ -115,7 +97,7 @@ extern "C"
 {
 #endif // defined(__cplusplus)
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Types
 
     // entry point argc
@@ -124,19 +106,27 @@ extern "C"
     // entry point argv type
     typedef char const * const * xo_argv_t;
 
-    // typedefs to allow the user to change our allocation and print functions
-    // the defaults when not provided are: malloc, realloc, free and printf
+    // Function pointer typedefs for customizing the print function and
+    // allocator.
     typedef void * (*xo_args_alloc_fn)(size_t);
     typedef void * (*xo_args_realloc_fn)(void *, size_t);
     typedef void (*xo_args_free_fn)(void *);
     typedef int (*xo_args_print_fn)(char const *, ...);
 
-    // An opaque context structure to hold implementation details of xo-args
+    // An opaque context structure to hold implementation details of xo-args.
     typedef struct xo_args_ctx xo_args_ctx;
 
-    // An opaque structure to hold implementation details of a single argument
+    // An opaque structure to hold implementation details of a single argument.
     typedef struct xo_args_arg xo_args_arg;
 
+    // Bit-flags for declaring an argument.
+    // A valid XO_ARGS_ARG_FLAG value is any one type value with or without
+    // XO_ARGS_ARG_REQUIRED.
+    //
+    // Examples:
+    //      XO_ARGS_TYPE_STRING                         // valid
+    //      XO_ARGS_TYPE_STRING|XO_ARGS_TYPE_BOOL       // INVALID
+    //      XO_ARGS_TYPE_STRING|XO_ARGS_ARG_REQUIRED    // valid
     typedef enum XO_ARGS_ARG_FLAG
     {
         XO_ARGS_TYPE_STRING = 1 << 0,
@@ -154,7 +144,22 @@ extern "C"
         XO_ARGS_ARG_REQUIRED = 1 << 9
     } XO_ARGS_ARG_FLAG;
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    // Creates an xo-args context to be used with other API functions.
+    // argc, argv: required program arguments
+    //
+    // app_name: optional name for the executable. If not provided: xo-args will
+    // parse the application filename from argv[0].
+    //
+    // app_version: optional version string to be printed when --help/-h or
+    // --version/-v are supplied by the user.
+    //
+    // app_documentation: optional additional documentation string to be printed
+    // at the beginning of the generated help text.
+    //
+    // alloc_fn, realloc_fn, free_fn: optional allocation functions.
+    //
+    // print_fn: optional free function.
     xo_args_ctx * xo_args_create_ctx_advanced(
         xo_argc_t const argc,
         xo_argv_t const argv,
@@ -166,21 +171,24 @@ extern "C"
         xo_args_free_fn const free_fn,
         xo_args_print_fn const print_fn);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    // Creates an xo-args context to be used with other API functions.
+    // argc, argv: required program arguments
     xo_args_ctx * xo_args_create_ctx(xo_argc_t const argc,
                                      xo_argv_t const argv);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // xo_args_submit concludes the setup of xo-args and parses all arguments.
     // If xo_args_submit returns true: the arguments are valid and can be used.
-    // If xo_args_submit returns false: the arguments are invalid, the help text
-    // will have been printed, and the program may now exit with an error code.
+    // If xo_args_submit returns false: the arguments are invalid or the
+    // --help/-h or --version/-v arguments were provided.
     bool xo_args_submit(xo_args_ctx * const context);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    // Destroys the xo-args context and all memory tracked by xo-args.
     void xo_args_destroy_ctx(xo_args_ctx * const context);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Prints the generated help text. This is done automatically during submit
     // if the program arguments contain --help (as a switch, not a string value
     // which would be consumed / ignored)
@@ -189,9 +197,14 @@ extern "C"
     // true.
     void xo_args_print_help(xo_args_ctx const * const context);
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Declares a program argument with some customization to help in generating
-    // help text.
+    ////////////////////////////////////////////////////////////////////////////
+    // Prints the version text specified when creating the xo-args context.
+    // Version text can only be printed if a version string was provided via
+    // xo_args_create_ctx_advanced.
+    void xo_args_print_version(xo_args_ctx const * const context);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Declares a program argument.
     //
     // context: The xo-args context
     //
@@ -211,6 +224,9 @@ extern "C"
     //
     // description (optional): Text to be printed next to the argument in the
     // help text.
+    //
+    // flags: bit-flags for combining an argument data type and optionally a
+    // required flag.
     xo_args_arg * xo_args_declare_arg(xo_args_ctx * const context,
                                       char const * const name,
                                       char const * const short_name,
@@ -218,36 +234,36 @@ extern "C"
                                       char const * const description,
                                       XO_ARGS_ARG_FLAG const flags);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_string(xo_args_arg const * const arg,
                                 char const ** out_string);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_int(xo_args_arg const * const arg, int64_t * out_int);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_double(xo_args_arg const * const arg,
                                 double * out_int);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_bool(xo_args_arg const * const arg, bool * out_bool);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_string_array(xo_args_arg const * const arg,
                                       char const *** out_string_array,
                                       size_t * out_array_count);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_int_array(xo_args_arg const * const arg,
                                    int64_t const ** out_int_array,
                                    size_t * out_array_count);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_double_array(xo_args_arg const * const arg,
                                       double const ** out_double_array,
                                       size_t * out_array_count);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
                                     bool const ** out_bool_array,
                                     size_t * out_array_count);
@@ -850,6 +866,22 @@ void xo_args_print_help(xo_args_ctx const * const context)
                 _xo_args_print_arg_help(context, arg, left_column_width);
             }
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void xo_args_print_version(xo_args_ctx const * const context)
+{
+    if (NULL != context->app_version)
+    {
+        context->print(
+            "%s version %s\n", context->app_name, context->app_version);
+    }
+    else
+    {
+        XO_ARGS_ASSERT(NULL != context->app_version,
+                       "No version string was "
+                       "provided but xo_args_print_version was called.");
     }
 }
 
@@ -1588,6 +1620,17 @@ bool xo_args_submit(xo_args_ctx * const context)
     xo_args_arg const * const arg_help = xo_args_declare_arg(
         context, "help", "h", NULL, "show this message", XO_ARGS_TYPE_SWITCH);
 
+    xo_args_arg const * arg_version = NULL;
+    if (NULL != context->app_version)
+    {
+        arg_version = xo_args_declare_arg(context,
+                                          "version",
+                                          "v",
+                                          NULL,
+                                          "shows the program version",
+                                          XO_ARGS_TYPE_SWITCH);
+    }
+
     for (size_t i = 1; i < (size_t)context->argc; ++i)
     {
         char const * const argv_arg = context->argv[i];
@@ -1643,6 +1686,21 @@ bool xo_args_submit(xo_args_ctx * const context)
         }
     }
 
+    bool help = false;
+    if (xo_args_try_get_bool(arg_help, &help) && true == help)
+    {
+        xo_args_print_help(context);
+        return false;
+    }
+
+    bool version = false;
+    if ((NULL != context->app_version)
+        && xo_args_try_get_bool(arg_version, &version) && (true == version))
+    {
+        xo_args_print_help(context);
+        return false;
+    }
+
     for (size_t i = 0; i < context->args_size; ++i)
     {
         xo_args_arg const * const arg = context->args[i];
@@ -1662,13 +1720,6 @@ bool xo_args_submit(xo_args_ctx * const context)
             _xo_print_try_help(context);
             return false;
         }
-    }
-
-    bool help = false;
-    if (xo_args_try_get_bool(arg_help, &help) && true == help)
-    {
-        xo_args_print_help(context);
-        return false;
     }
 
     return true;
@@ -2199,3 +2250,27 @@ bool xo_args_try_get_bool_array(xo_args_arg const * const arg,
     return false;
 }
 #endif
+// This is free and unencumbered software released into the public domain.
+//
+// Anyone is free to copy, modify, publish, use, compile, sell, or
+// distribute this software, either in source code form or as a compiled
+// binary, for any purpose, commercial or non-commercial, and by any
+// means.
+//
+// In jurisdictions that recognize copyright laws, the author or authors
+// of this software dedicate any and all copyright interest in the
+// software to the public domain. We make this dedication for the benefit
+// of the public at large and to the detriment of our heirs and
+// successors. We intend this dedication to be an overt act of
+// relinquishment in perpetuity of all present and future rights to this
+// software under copyright law.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+// OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+//
+// For more information, please refer to <https://unlicense.org/>

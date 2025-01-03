@@ -376,7 +376,7 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool ASCII;
     if (xo_args_try_get_bool(arg_ASCII, &ASCII) && ASCII)
     {
-        cmd->OutputType |= OutputType_ASCII;
+        cmd->OutputMode |= OutputMode_ASCII;
     }
 
     xo_args_try_get_bool(arg_Bail, &cmd->Bail);
@@ -386,13 +386,13 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool box;
     if (xo_args_try_get_bool(arg_Box, &box) && box)
     {
-        cmd->OutputType |= OutputType_Box;
+        cmd->OutputMode |= OutputMode_Box;
     }
 
     bool column;
     if (xo_args_try_get_bool(arg_Column, &column) && column)
     {
-        cmd->OutputType |= OutputType_Column;
+        cmd->OutputMode |= OutputMode_Column;
     }
 
     xo_args_try_get_string(arg_Command, &cmd->Command);
@@ -400,7 +400,7 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool CSV;
     if (xo_args_try_get_bool(arg_CSV, &CSV) && CSV)
     {
-        cmd->OutputType |= OutputType_CSV;
+        cmd->OutputMode |= OutputMode_CSV;
     }
 
     xo_args_try_get_bool(arg_Deserialize, &cmd->Deserialize);
@@ -414,7 +414,7 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool HTML;
     if (xo_args_try_get_bool(arg_HTML, &HTML) && HTML)
     {
-        cmd->OutputType |= OutputType_HTML;
+        cmd->OutputMode |= OutputMode_HTML;
     }
 
     xo_args_try_get_bool(arg_Interactive, &cmd->Interactive);
@@ -422,19 +422,19 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool JSON;
     if (xo_args_try_get_bool(arg_JSON, &JSON) && JSON)
     {
-        cmd->OutputType |= OutputType_JSON;
+        cmd->OutputMode |= OutputMode_JSON;
     }
 
     bool line;
     if (xo_args_try_get_bool(arg_Line, &line) && line)
     {
-        cmd->OutputType |= OutputType_Line;
+        cmd->OutputMode |= OutputMode_Line;
     }
 
     bool list;
     if (xo_args_try_get_bool(arg_List, &list) && list)
     {
-        cmd->OutputType |= OutputType_List;
+        cmd->OutputMode |= OutputMode_List;
     }
 
     int64_t const * lookasideArray;
@@ -478,7 +478,7 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool markdown;
     if (xo_args_try_get_bool(arg_Markdown, &markdown) && markdown)
     {
-        cmd->OutputType |= OutputType_Markdown;
+        cmd->OutputMode |= OutputMode_Markdown;
     }
 
     int64_t maxSize = 0;
@@ -587,7 +587,7 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool quote;
     if (xo_args_try_get_bool(arg_Quote, &quote) && quote)
     {
-        cmd->OutputType |= OutputType_Quote;
+        cmd->OutputMode |= OutputMode_Quote;
     }
 
     xo_args_try_get_bool(arg_Readonly, &cmd->Readonly);
@@ -608,13 +608,13 @@ CommandLine_t * CreateCommandLine(int const argc,
     bool table;
     if (xo_args_try_get_bool(arg_Table, &table) && table)
     {
-        cmd->OutputType |= OutputType_Table;
+        cmd->OutputMode |= OutputMode_Table;
     }
 
     bool tabs;
     if (xo_args_try_get_bool(arg_Tabs, &tabs) && tabs)
     {
-        cmd->OutputType |= OutputType_Tabs;
+        cmd->OutputMode |= OutputMode_Tabs;
     }
 
     xo_args_try_get_bool(arg_UnsafeTesting, &cmd->UnsafeTesting);
@@ -630,7 +630,7 @@ CommandLine_t * CreateCommandLine(int const argc,
 
     // Additional Validations
     //////////////////////////////////////////////////////////////////////////
-    size_t outputTypeTemp = cmd->OutputType;
+    size_t outputTypeTemp = cmd->OutputMode;
     size_t bits = 0;
     for (; outputTypeTemp; ++bits)
     {
