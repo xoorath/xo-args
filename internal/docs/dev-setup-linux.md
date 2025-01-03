@@ -36,4 +36,4 @@ make
 
 ## See also:
 
-* [dev-setup-linux.md](./dev-setup-linux.md)
+* [dev-setup-windows.md](./dev-setup-windows.md)
