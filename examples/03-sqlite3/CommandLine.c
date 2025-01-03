@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <xo-args.h>
+#include <xo-args/xo-args.h>
 
 char const * _DuplicateString(char const * in)
 {
@@ -708,4 +708,4 @@ void DestroyCommandLine(CommandLine_t * const cmd)
 }
 
 #define XO_ARGS_IMPL
-#include <xo-args.h>
+#include <xo-args/xo-args.h>

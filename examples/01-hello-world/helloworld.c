@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <xo-args.h>
+#include <xo-args/xo-args.h>
 
 int main(int argc, char ** argv)
 {
@@ -99,4 +99,4 @@ int main(int argc, char ** argv)
 }
 
 #define XO_ARGS_IMPL
-#include <xo-args.h>
+#include <xo-args/xo-args.h>

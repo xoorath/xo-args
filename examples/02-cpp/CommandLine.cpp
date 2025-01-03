@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#include <xo-args.h>
+#include <xo-args/xo-args.h>
 
 class CommandLineImpl
 {
@@ -133,4 +133,4 @@ int64_t CommandLine::GetRepeat() const
 }
 
 #define XO_ARGS_IMPL
-#include <xo-args.h>
+#include <xo-args/xo-args.h>

@@ -1,13 +1,14 @@
-![xo-args.png](https://git.merveilles.town/xo/xo-args-internal/raw/branch/main/docs/xo-args-wordmark.png)
+![xo-args.png](./internal/docs/xo-args-wordmark.png)
 
 # About
 
-**xo-args** provides a way to declare named arguments for a program's argv
-in a portable manner with a syntax that will be familiar to many users.
-xo-args allows for typed arguments, arrays of values, and will generate help
-text. It is designed to work with C99 or C++98 or newer.
+[xo-args.h](./include/xo-args/xo-args.h) provides a way to declare named 
+arguments for a program's argv in a portable manner with a syntax that will be
+familiar to many users. [xo-args.h](./include/xo-args/xo-args.h) allows for
+typed arguments, arrays of values, and will generate help text.
+It is designed to work with C99 or C++98 or newer.
 
-Status: Work in progress as of: 2025 January
+Status: Version 1.0 released on 2025-01-02
 
 # Unlicense
 
@@ -18,7 +19,7 @@ xo-args is in the [public domain](UNLICENSE).
 ```c 
 // Define XO_ARGS_IMPL before including xo-args.h in a single c or cpp file.
 #define XO_ARGS_IMPL
-#include "xo-args.h"
+#include <xo-args/xo-args.h>
 ```
 
 ```c
@@ -29,7 +30,7 @@ xo-args is in the [public domain](UNLICENSE).
 #include <stdlib.h>
 #include <string.h>
 
-#include <xo-args.h>
+#include <xo-args/xo-args.h>
 
 int main(int const argc, char const * const * const argv)
 {
@@ -121,4 +122,6 @@ re-creates the many arguments of sqlite3
 
 # Contributing
 
-See [xo-args-internal](https://git.merveilles.town/xo/xo-args-internal).
+If you're interested in contributing to or forking the xo-args project, see the 
+sub-directory [internal/](./internal/) which contains contributor documentation,
+unit tests, build scripts and other files only relevant to contributors.

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// xo-args.h - pre-release - public domain
+// xo-args.h - v1.0 - public domain
 // authored from 2024-2025 by Jared Thomson
 //
 // xo-args provides a way to declare named arguments for a program's argv
