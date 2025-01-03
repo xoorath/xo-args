@@ -11,6 +11,7 @@ It is designed to work with C99 or C++98 or newer.
 Status: Version 1.0 released on 2025-01-02
 
 Project homepage: [https://git.merveilles.town/xo/xo-args](https://git.merveilles.town/xo/xo-args)
+
 Project mirror: [https://github.com/xoorath/xo-args](https://github.com/xoorath/xo-args)
 
 # Unlicense
