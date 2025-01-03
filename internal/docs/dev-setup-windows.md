@@ -25,4 +25,4 @@ any arguments or other inputs.
 
 ## See also:
 
-* [dev-setup-windows.md](./dev-setup-windows.md)
+* [dev-setup-linux.md](./dev-setup-linux.md)
